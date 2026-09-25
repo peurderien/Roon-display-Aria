@@ -141,3 +141,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Roon Display — generated at runtime, not source
+roon-local-services/ai-cache.json
+roon-local-services/backups/
