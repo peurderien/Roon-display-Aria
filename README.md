@@ -4,6 +4,10 @@ Custom Roon Now Playing display for Google TV/Chromecast, with AI-generated albu
 
 Not affiliated with or endorsed by Roon Labs.
 
+| Now Playing | Remote controls | AI album write-up + queue |
+| :---: | :---: | :---: |
+| ![Now Playing view](screenshots/Screenshot1.jpeg) | ![Remote control bar](screenshots/Screenshot2.jpeg) | ![AI-generated album description and queue panel](screenshots/Screenshot3.jpeg) |
+
 ## What this is
 
 Roon's own Google TV display is functional but bare. This project replaces it with a richer one:
