@@ -1,0 +1,73 @@
+{
+    "aiLanguage": "Italian",
+    "textLengthWords": 180,
+    "providerOrder": [
+        "claude",
+        "chatgpt"
+    ],
+    "models": {
+        "claude": "claude-sonnet-5",
+        "chatgpt": "gpt-5.6-Luna"
+    },
+    "reasoningEffort": {
+        "chatgpt": "medium"
+    },
+    "stylePrompts": {
+        "album": "Also cover similar albums.",
+        "composition": "If song with lyrics, focus on the meaning, else focus on the music structure. In both cases address relevance and similarities with other compositions.",
+        "artist": "Also cover similar artists."
+    },
+    "webSearch": {
+        "mode": "always",
+        "maxUses": 3,
+        "useDomainFilter": false,
+        "preferredDomains": [
+            "allmusic.com",
+            "discogs.com",
+            "musicbrainz.org",
+            "wikipedia.org",
+            "pitchfork.com",
+            "rollingstone.com",
+            "dicionariompb.com.br",
+            "rollingstone.com.br",
+            "screamyell.com.br",
+            "musicajazz.it",
+            "jazzit.it",
+            "jazzitalia.net"
+        ],
+        "fallbackIfEmpty": true
+    },
+    "disambiguation": {
+        "artist": false,
+        "album": true,
+        "composition": true
+    },
+    "keyNormalizationRules": [
+        {
+            "symbols": [
+                "(",
+                "[",
+                "{"
+            ],
+            "containsAny": [],
+            "lastOccurrenceOnly": false,
+            "appliesToAlbum": true,
+            "appliesToTrack": true
+        },
+        {
+            "symbols": [
+                "-"
+            ],
+            "containsAny": [
+                "remix",
+                "remaster",
+                "live",
+                "theme",
+                "title"
+            ],
+            "lastOccurrenceOnly": true,
+            "appliesToAlbum": false,
+            "appliesToTrack": true
+        }
+    ]
+}

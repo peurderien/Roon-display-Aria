@@ -1,0 +1,2461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Roon Display — Admin</title>
+<style>
+    :root {
+        --bg: #1c1e22;
+        --panel: #26292f;
+        --border: #383c44;
+        --text: #e4e6eb;
+        --text-dim: #9a9fa8;
+        --accent: #2f8fef;
+        --ok: #3ecf6a;
+        --err: #e8555f;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+        font-size: 14px;
+    }
+    header {
+        padding: 20px 28px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    header h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+    header p {
+        margin: 4px 0 0;
+        color: var(--text-dim);
+        font-size: 13px;
+    }
+    nav {
+        display: flex;
+        gap: 4px;
+        padding: 0 28px;
+        border-bottom: 1px solid var(--border);
+    }
+    nav button {
+        background: none;
+        border: none;
+        color: var(--text-dim);
+        padding: 12px 16px;
+        font-size: 14px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+    }
+    nav button.active {
+        color: var(--text);
+        border-bottom-color: var(--accent);
+    }
+    main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 28px;
+    }
+    .tab { display: none; }
+    .tab.active { display: block; }
+    .banner {
+        display: none;
+        padding: 10px 14px;
+        border-radius: 6px;
+        margin-bottom: 16px;
+        font-size: 13px;
+    }
+    .banner.visible { display: block; }
+    .banner.warn { background: rgba(232, 85, 95, 0.15); color: var(--err); border: 1px solid rgba(232, 85, 95, 0.35); }
+    .banner code {
+        background: rgba(0, 0, 0, 0.35);
+        color: var(--text);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        user-select: all;
+    }
+    .banner.info { background: rgba(47, 143, 239, 0.12); color: var(--accent); border: 1px solid rgba(47, 143, 239, 0.3); }
+    .banner.ok { background: rgba(62, 207, 106, 0.12); color: var(--ok); border: 1px solid rgba(62, 207, 106, 0.3); }
+    .authScreen {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 70vh;
+    }
+    .authBox {
+        width: 320px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 28px;
+    }
+    .authBox h2 {
+        margin: 0 0 16px;
+        font-size: 16px;
+    }
+    .authBox input {
+        width: 100%;
+        margin-bottom: 10px;
+        box-sizing: border-box;
+    }
+    .authBox button.primary {
+        width: 100%;
+    }
+    .authBox .banner {
+        margin-bottom: 14px;
+    }
+    .authBox a {
+        color: var(--accent);
+    }
+    fieldset {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin: 0 0 20px;
+        padding: 14px 16px 18px;
+    }
+    legend {
+        padding: 0 6px;
+        color: var(--text-dim);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .field {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 7px 0;
+    }
+    .field label {
+        color: var(--text-dim);
+        flex: 0 0 auto;
+        min-width: 200px;
+    }
+    .infoIcon {
+        display: inline-block;
+        position: relative;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--border);
+        color: var(--text-dim);
+        font-size: 10px;
+        font-style: normal;
+        line-height: 14px;
+        text-align: center;
+        cursor: help;
+        margin-left: 6px;
+        user-select: none;
+        vertical-align: middle;
+    }
+    .infoIcon:hover {
+        background: var(--accent);
+        color: #fff;
+    }
+    /* Custom tooltip instead of the native title="" popup -- Safari's
+       native tooltip timing/appearance on small custom elements like this
+       is unreliable (cursor changes to the help "?" but the text itself
+       often never shows). This is plain CSS, no JS, always shows on hover. */
+    .infoIcon::after {
+        content: attr(data-tip);
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: 220px;
+        background: #0d0e10;
+        color: var(--text);
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        line-height: 1.4;
+        text-align: left;
+        white-space: normal;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+        z-index: 50;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.1s ease;
+    }
+    .infoIcon:hover::after {
+        opacity: 1;
+    }
+    .field .hint {
+        display: block;
+        color: var(--text-dim);
+        font-size: 11px;
+        margin-top: 2px;
+    }
+    .costWarning {
+        color: var(--err);
+        font-size: 12px;
+        font-weight: normal;
+        margin-left: 8px;
+    }
+    .costLabel {
+        color: var(--err);
+    }
+    .field.fieldGreyedOut {
+        opacity: 0.4;
+    }
+    input[type="text"], input[type="number"], input[type="password"], select, textarea {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 13px;
+        width: 260px;
+    }
+    /* Visually identical to type="password" but a real type="text" field
+       underneath -- used for the API key / password-change fields (NOT
+       the login field above, which deliberately went the other way, see
+       its own comment). Safari's weak "heuristic" save-password nudge (no
+       "Never for This Website" option) can fire on a bare type="password"
+       input with no real form/submit to anchor to; for fields that were
+       never meant to trigger any save prompt at all (API keys) or where
+       the proper prompt doesn't make sense anyway (password-change
+       fields, not a login), staying out of the credential manager
+       entirely like this is the right call. */
+    .maskedInput {
+        -webkit-text-security: disc;
+        text-security: disc;
+    }
+    textarea {
+        font-family: inherit;
+        resize: vertical;
+    }
+    input[type="color"] {
+        width: 44px;
+        height: 30px;
+        padding: 2px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--panel);
+    }
+    input[type="checkbox"] { width: 16px; height: 16px; }
+    .colorRow { display: flex; align-items: center; gap: 8px; }
+    .colorRow input[type="text"] { width: 190px; }
+    .fieldValueWrap { display: flex; align-items: center; gap: 8px; }
+    .fieldResetBtn {
+        flex: 0 0 auto;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--text-dim);
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1;
+    }
+    .fieldResetBtn:hover { color: var(--text); border-color: var(--text-dim); }
+    .reorder-list {
+        width: 260px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .reorder-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 10px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+    }
+    .reorder-item:last-child { border-bottom: none; }
+    .reorder-item .buttons { display: flex; gap: 4px; }
+    .reorder-item button {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        border-radius: 4px;
+        width: 22px;
+        height: 22px;
+        cursor: pointer;
+        line-height: 1;
+    }
+    .reorder-item button:hover { color: var(--text); }
+    .actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 4px;
+    }
+    button.primary {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 18px;
+        font-size: 13px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    button.primary:hover { filter: brightness(1.1); }
+    button.primary.danger { background: var(--err); }
+    button.primary:disabled { opacity: 0.5; cursor: default; }
+    .status {
+        font-size: 12px;
+        color: var(--text-dim);
+    }
+    .status.ok { color: var(--ok); }
+    .status.err { color: var(--err); }
+    .disabledNotice {
+        display: none;
+        color: var(--err);
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Roon Display — Admin</h1>
+        <p>roon-local-services proxy configuration</p>
+    </div>
+    <div id="headerActions" style="display: none; align-items: center; gap: 10px;">
+        <button class="primary" id="logoutBtn">Log out</button>
+        <button class="primary danger" id="headerSaveRestartBtn">Save &amp; Restart Server</button>
+        <span class="status" id="headerRestartStatus"></span>
+    </div>
+</header>
+
+<div id="loginScreen" class="authScreen">
+    <div class="authBox">
+        <h2>Log in</h2>
+        <div id="loginError" class="banner warn" style="display: none;"></div>
+        <div id="loginNotice" class="banner ok" style="display: none;"></div>
+        <!-- Deliberately a REAL <form> with a REAL type="password" field --
+             the opposite of what you might expect from the comments
+             elsewhere on this page about masked fake fields. Those exist
+             because Safari's weak, no-memory "heuristic" save-password
+             nudge (no "Never for This Website" option) fires on bare
+             inputs with no real form/submit event to anchor to. A genuine
+             form submit with a genuine password field is what makes
+             Safari offer its PROPER save-password prompt instead, which
+             does have "Never for This Website" -- click that once here
+             and it actually stops asking, for good. -->
+        <form id="loginForm">
+            <!-- Hidden but real, part of the form and submitted -- not
+                 just visually hidden. Safari's proper save-password flow
+                 (with "Never for This Website") expects a username+
+                 password PAIR; a password-only form seems to leave it
+                 asking the person to type a username by hand into
+                 Safari's own popup instead of pre-filling one from the
+                 page, which explains why "Save" needed manual typing
+                 every time and the option never stuck. The server-side
+                 auth check ignores this value entirely (Basic Auth here
+                 only ever checks the password, see admin.js) -- a fixed
+                 "admin" is just something consistent for Safari to pair
+                 with the real password. -->
+            <input type="text" id="loginUsername" name="username" value="admin" autocomplete="username" style="display: none;" tabindex="-1" aria-hidden="true">
+            <label for="loginPassword" class="hint" style="display: block; margin-bottom: 4px;">Password</label>
+            <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+            <button type="submit" class="primary" id="loginSubmit">Log in</button>
+        </form>
+        <p class="hint" style="margin-top: 14px;">
+            <a href="#" id="forgotPasswordLink">Forgot password?</a>
+        </p>
+        <div id="forgotPasswordPanel" style="display: none; margin-top: 10px;">
+            <p class="hint">This clears the three API keys and resets the password to <code>admin</code>. Everything else (network settings, AI config) is left untouched. This cannot be undone.</p>
+            <button class="primary danger" id="confirmReset">Reset access</button>
+            <span class="status" id="resetStatus"></span>
+        </div>
+    </div>
+</div>
+
+<div id="forcePasswordScreen" class="authScreen" style="display: none;">
+    <div class="authBox">
+        <h2>Set a new password</h2>
+        <p class="hint">You logged in with the default password. Choose a new one before continuing — it can be anything except <code>admin</code>.</p>
+        <div id="forceChangeError" class="banner warn" style="display: none;"></div>
+        <label for="forceNewSecret" class="hint" style="display: block; margin-bottom: 4px;">New</label>
+        <input type="text" id="forceNewSecret" class="maskedInput" autocomplete="off" spellcheck="false">
+        <label for="forceConfirmSecret" class="hint" style="display: block; margin: 8px 0 4px;">Confirm</label>
+        <input type="text" id="forceConfirmSecret" class="maskedInput" autocomplete="off" spellcheck="false">
+        <button class="primary" id="forceChangeSubmit">Set password</button>
+        <span class="status" id="forceChangeStatus"></span>
+    </div>
+</div>
+
+<nav id="mainNav" style="display: none;">
+    <button class="tabBtn active" data-tab="lookfeel">Look and Feel</button>
+    <button class="tabBtn" data-tab="datasources">Data Sources</button>
+    <button class="tabBtn" data-tab="apikeys">API Keys</button>
+    <button class="tabBtn" data-tab="ai">AI (settings and prompts)</button>
+    <button class="tabBtn" data-tab="network">Network &amp; maintenance</button>
+    <button class="tabBtn" data-tab="logs">Logs</button>
+    <button class="tabBtn" data-tab="version">Version</button>
+</nav>
+
+<div id="globalBanner" class="banner" style="margin: 16px 28px 0;"></div>
+
+<main id="mainContent" style="display: none;">
+
+    <!-- ============ Look and Feel ============ -->
+    <section id="tab-lookfeel" class="tab active">
+        <div id="lookfeelDisabledNotice" class="disabledNotice">
+            ROON_DISPLAY_UI_PATH isn't set yet — set it in the "API Keys &amp; Config" tab first. Colors can't be read or saved until then.
+        </div>
+        <div id="lookfeelBanner" class="banner"></div>
+
+        <fieldset>
+            <legend>Colors</legend>
+            <div class="field">
+                <label for="f_accentColor">Accent color<span class="infoIcon" data-tip="The single accent color used throughout the UI — buttons, highlights, active/focused states.">i</span></label>
+                <div class="colorRow">
+                    <input type="color" id="f_accentColorPicker">
+                    <input type="text" id="f_accentColor" placeholder="rgb(0, 150, 255)">
+                </div>
+            </div>
+            <div class="field">
+                <label for="f_queuePanelBrightness">Text box brightness<span class="infoIcon" data-tip="Darkens the panel color before opacity is applied. 0 = black, 1 = full accent brightness.">i</span><span class="hint">0–1, darkens before opacity is applied</span></label>
+                <input type="number" id="f_queuePanelBrightness" step="0.05" min="0" max="1">
+            </div>
+            <div class="field">
+                <label for="f_queuePanelOpacity">Text box opacity<span class="infoIcon" data-tip="Transparency of the queue, central info panel, and AI dropdown backgrounds — one shared value.">i</span><span class="hint">Queue, central panel, AI dropdown — shared</span></label>
+                <input type="number" id="f_queuePanelOpacity" step="0.05" min="0" max="1">
+            </div>
+            <div class="field">
+                <label for="f_controlBarBackgroundOpacity">Control bar box opacity<span class="infoIcon" data-tip="Opacity of the dark backdrop box behind the whole remote control bar (both rows of buttons) -- always neutral black, never accent-tinted.">i</span></label>
+                <input type="number" id="f_controlBarBackgroundOpacity" step="0.05" min="0" max="1">
+            </div>
+            <div class="field">
+                <label for="f_barAutoHideMs">Auto-close timeout (ms)<span class="infoIcon" data-tip="How long the control bar stays up before hiding itself with no input. Shared by the Refresh/AI Agent/Artist dropdowns too -- one value covers every timed auto-close in the remote control area.">i</span></label>
+                <input type="number" id="f_barAutoHideMs" step="500" min="500" max="30000">
+            </div>
+            <div class="field">
+                <label for="f_dimmingOverlayColor">Dimming overlay color<span class="infoIcon" data-tip="Color of the overlay used during anti-burn-in brightness/contrast sweeps on album art.">i</span></label>
+                <div class="colorRow">
+                    <input type="color" id="f_dimmingOverlayColorPicker">
+                    <input type="text" id="f_dimmingOverlayColor" placeholder="rgb(20, 19, 19)">
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Album Art</legend>
+            <div class="field">
+                <label for="f_albumCoverWidthPercent">Width %<span class="infoIcon" data-tip="Width of the album cover, as a percentage of screen width.">i</span></label>
+                <input type="number" id="f_albumCoverWidthPercent" step="1" min="1" max="100">
+            </div>
+            <div class="field">
+                <label for="f_albumCoverMaxHeightVh">Max height (vh)<span class="infoIcon" data-tip="Maximum height of the album cover, in vh (percent of screen height).">i</span></label>
+                <input type="number" id="f_albumCoverMaxHeightVh" step="1" min="1" max="100">
+            </div>
+            <div class="field">
+                <label for="f_albumArtBrightness">Brightness<span class="infoIcon" data-tip="CSS brightness filter on the main album cover image, e.g. '70%'.">i</span></label>
+                <input type="text" id="f_albumArtBrightness" placeholder="70%">
+            </div>
+            <div class="field">
+                <label for="f_albumArtContrast">Contrast<span class="infoIcon" data-tip="CSS contrast filter on the main album cover image, e.g. '90%'.">i</span></label>
+                <input type="text" id="f_albumArtContrast" placeholder="90%">
+            </div>
+            <div class="field">
+                <label for="f_albumInfoBackOpacity">Opacity back<span class="infoIcon" data-tip="Opacity (0-1) of the 'back' panel's background (the info overlay shown in place of the cover). 1 = fully opaque (today's look); lower lets the front cover art show through behind it. The panel's text itself always stays fully readable, regardless of this value.">i</span></label>
+                <input type="number" id="f_albumInfoBackOpacity" step="0.05" min="0" max="1">
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Three text lines</legend>
+            <p class="hint" style="margin: 0 0 10px;">Each unchecked line's container is hidden entirely (no reflow of the other two -- the empty space stays empty).</p>
+            <div class="field">
+                <label for="f_showAlbumLine">Album</label>
+                <input type="checkbox" id="f_showAlbumLine">
+            </div>
+            <div class="field">
+                <label for="f_showTrackLine">Track</label>
+                <input type="checkbox" id="f_showTrackLine">
+            </div>
+            <div class="field">
+                <label for="f_showArtistsLine">Artists</label>
+                <input type="checkbox" id="f_showArtistsLine">
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Clock</legend>
+            <div class="field">
+                <label for="f_clockEnabled">Enabled</label>
+                <input type="checkbox" id="f_clockEnabled">
+            </div>
+            <div class="field">
+                <label for="f_clockFontSize">Font size<span class="infoIcon" data-tip="CSS size of the clock text, e.g. '2.5vh'.">i</span></label>
+                <input type="text" id="f_clockFontSize" placeholder="2.5vh">
+            </div>
+            <div class="field">
+                <label for="f_clockHour12">Use 12h (AM/PM)<span class="infoIcon" data-tip="Unchecked = 24h (e.g. 14:05). Checked = 12h with AM/PM (e.g. 2:05 PM).">i</span></label>
+                <input type="checkbox" id="f_clockHour12">
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Background Artist</legend>
+            <div class="field">
+                <label for="f_artistArtSaturate">Saturation<span class="infoIcon" data-tip="CSS saturation filter on the background artist photo.">i</span></label>
+                <input type="text" id="f_artistArtSaturate" placeholder="10%">
+            </div>
+            <div class="field">
+                <label for="f_artistArtContrast">Contrast<span class="infoIcon" data-tip="CSS contrast filter on the background artist photo.">i</span></label>
+                <input type="text" id="f_artistArtContrast" placeholder="70%">
+            </div>
+            <div class="field">
+                <label for="f_artistArtBrightness">Brightness<span class="infoIcon" data-tip="CSS brightness filter on the background artist photo.">i</span></label>
+                <input type="text" id="f_artistArtBrightness" placeholder="50%">
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Background Blurred Album</legend>
+            <div class="field">
+                <label for="f_bgAlbumArtSepia">Sepia<span class="infoIcon" data-tip="CSS sepia filter on the blurred album art shown behind everything.">i</span></label>
+                <input type="text" id="f_bgAlbumArtSepia" placeholder="100%">
+            </div>
+            <div class="field">
+                <label for="f_bgAlbumArtSaturate">Saturation<span class="infoIcon" data-tip="CSS saturation filter on the blurred background album art.">i</span></label>
+                <input type="text" id="f_bgAlbumArtSaturate" placeholder="200%">
+            </div>
+            <div class="field">
+                <label for="f_bgAlbumArtHueRotate">Hue rotate<span class="infoIcon" data-tip="CSS hue-rotate filter on the blurred background album art, e.g. '0.4turn'.">i</span></label>
+                <input type="text" id="f_bgAlbumArtHueRotate" placeholder="0.4turn">
+            </div>
+            <div class="field">
+                <label for="f_bgAlbumArtContrast">Contrast<span class="infoIcon" data-tip="CSS contrast filter on the blurred background album art.">i</span></label>
+                <input type="text" id="f_bgAlbumArtContrast" placeholder="70%">
+            </div>
+            <div class="field">
+                <label for="f_bgAlbumArtBrightness">Brightness<span class="infoIcon" data-tip="CSS brightness filter on the blurred background album art.">i</span></label>
+                <input type="text" id="f_bgAlbumArtBrightness" placeholder="30%">
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>AI Text</legend>
+            <div class="field">
+                <label for="f_aiBoxHeightVh">Box height (vh)<span class="infoIcon" data-tip="Height of the Album/Composition/Artist info panel, in vh (percent of screen height). Leave BLANK for automatic sizing (stops right above the now-playing title). Set a number for a fixed height instead -- margins (top/left/right) stay as configured elsewhere either way; a fixed height may cover the now-playing text at the bottom if set tall enough. Content scrolls if it doesn't fit.">i</span></label>
+                <input type="number" id="f_aiBoxHeightVh" step="1" min="10" max="95" placeholder="(auto)">
+            </div>
+            <div class="field">
+                <label for="f_aiBodyFontSizeVh">Font size (vh)<span class="infoIcon" data-tip="Font size of the AI-generated text inside the info panel, in vh.">i</span></label>
+                <input type="number" id="f_aiBodyFontSizeVh" step="0.1" min="0.5" max="10">
+            </div>
+            <div class="field">
+                <label for="f_aiSourceFontSizeVh">Footnote font size (vh)<span class="infoIcon" data-tip="Font size of the 'Source: ...' footnote line (provider, search info, generation date) -- independent from the body text size above.">i</span></label>
+                <input type="number" id="f_aiSourceFontSizeVh" step="0.1" min="0.5" max="10">
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Soundwave</legend>
+            <div id="waveformPreviewWrap" style="background: #14161a; border-radius: 6px; padding: 14px; margin-bottom: 14px;">
+                <canvas id="waveformPreviewCanvas" width="600" height="70" style="width: 100%; height: 70px; display: block;"></canvas>
+            </div>
+
+            <p class="hint" style="margin: 10px 0 4px; font-weight: bold;">Bar structure</p>
+            <div class="field">
+                <label for="f_waveformBarSizePct">Bar spacing<span class="infoIcon" data-tip="Controls the STEP between bars (0-1), not the bar's own final width -- the bar's actual width stays close to Pixel ratio below regardless of this value. Lower = more empty space between bars.">i</span></label>
+                <input type="number" id="f_waveformBarSizePct" step="0.05" min="0.05" max="1">
+            </div>
+            <div class="field">
+                <label for="f_waveformBarPixelRatio">Pixel ratio<span class="infoIcon" data-tip="Used only for the bar-width/spacing formula -- a separate value from this screen's real pixel ratio, which canvas resolution/sharpness always uses regardless of this setting.">i</span></label>
+                <input type="number" id="f_waveformBarPixelRatio" step="0.5" min="0.5" max="8">
+            </div>
+            <div class="field">
+                <label for="f_waveformCornerRadiusPct">Corner radius<span class="infoIcon" data-tip="Rounds the corners of both the background and foreground bars (they're drawn from the same shape), as a fraction of each bar's own width (0-0.5). 0 = sharp rectangles, the original look; 0.5 = fully rounded/capsule shape.">i</span></label>
+                <input type="number" id="f_waveformCornerRadiusPct" step="0.05" min="0" max="0.5">
+            </div>
+
+            <p class="hint" style="margin: 14px 0 4px; font-weight: bold;">Foreground wave (the "played" portion)</p>
+            <div class="field">
+                <label for="f_waveformIntensity">Intensity<span class="infoIcon" data-tip="Grey level (0-255) of the foreground bars. This is its own value, independent of the Accent color above.">i</span></label>
+                <input type="number" id="f_waveformIntensity" step="5" min="0" max="255">
+            </div>
+            <div class="field">
+                <label for="f_waveformFgFirstStep">Gradient stop position<span class="infoIcon" data-tip="Where the first vertical gradient stop sits within each bar (0-1, from the bar's top/bottom edge toward its center). The edge itself is always fully opaque.">i</span></label>
+                <input type="number" id="f_waveformFgFirstStep" step="0.05" min="0" max="0.5">
+            </div>
+            <div class="field">
+                <label for="f_waveformFgFirstOpacity">Gradient stop opacity<span class="infoIcon" data-tip="Opacity at that first gradient stop (0-1).">i</span></label>
+                <input type="number" id="f_waveformFgFirstOpacity" step="0.05" min="0" max="1">
+            </div>
+            <div class="field">
+                <label for="f_waveformFgCenterOpacity">Gradient center opacity<span class="infoIcon" data-tip="Opacity at the vertical center of each bar (0-1). Lower values make the middle of each bar fade out more.">i</span></label>
+                <input type="number" id="f_waveformFgCenterOpacity" step="0.05" min="0" max="1">
+            </div>
+
+            <p class="hint" style="margin: 14px 0 4px; font-weight: bold;">Background wave (the whole track, always visible)</p>
+            <div class="field">
+                <label for="f_waveformBgEdgeOpacity">Edge opacity<span class="infoIcon" data-tip="Opacity at the top/bottom edge of each bar (0-1). Unlike the foreground, this is its own adjustable value, not fixed.">i</span></label>
+                <input type="number" id="f_waveformBgEdgeOpacity" step="0.05" min="0" max="1">
+            </div>
+            <div class="field">
+                <label for="f_waveformBgFirstStep">Gradient stop position<span class="infoIcon" data-tip="Same idea as the foreground's own gradient stop position, independent value.">i</span></label>
+                <input type="number" id="f_waveformBgFirstStep" step="0.05" min="0" max="0.5">
+            </div>
+            <div class="field">
+                <label for="f_waveformBgFirstOpacity">Gradient stop opacity<span class="infoIcon" data-tip="Opacity at that stop (0-1).">i</span></label>
+                <input type="number" id="f_waveformBgFirstOpacity" step="0.05" min="0" max="1">
+            </div>
+            <div class="field">
+                <label for="f_waveformBgCenterOpacity">Gradient center opacity<span class="infoIcon" data-tip="Opacity at the vertical center of each bar (0-1).">i</span></label>
+                <input type="number" id="f_waveformBgCenterOpacity" step="0.05" min="0" max="1">
+            </div>
+
+            <p class="hint" style="margin: 14px 0 4px; font-weight: bold;">Glow (behind the foreground, follows Accent color)</p>
+            <div class="field">
+                <label for="f_colorBarEdgeOpacity">Edge opacity<span class="infoIcon" data-tip="Opacity of the glow at the top/bottom edges (0-1). Color is always the Accent color set above -- not adjustable separately here.">i</span></label>
+                <input type="number" id="f_colorBarEdgeOpacity" step="0.05" min="0" max="1">
+            </div>
+            <div class="field">
+                <label for="f_colorBarInnerStopPct">Inner stop position<span class="infoIcon" data-tip="Position of the secondary glow band, symmetric from both edges (0-0.5). The vertical center is always fully transparent -- that's what gives the glow its 'opens up in the middle' look, and isn't adjustable.">i</span></label>
+                <input type="number" id="f_colorBarInnerStopPct" step="0.05" min="0" max="0.5">
+            </div>
+            <div class="field">
+                <label for="f_colorBarInnerOpacity">Inner stop opacity<span class="infoIcon" data-tip="Opacity of the glow at that inner stop (0-1).">i</span></label>
+                <input type="number" id="f_colorBarInnerOpacity" step="0.05" min="0" max="1">
+            </div>
+
+            <p class="hint" style="margin: 14px 0 4px; font-weight: bold;">Timing</p>
+            <div class="field">
+                <label for="f_waveformTransitionSeconds">Scroll speed (s)<span class="infoIcon" data-tip="How long the smooth width transition takes when the progress bar advances. Was fixed at 1 second before this became adjustable.">i</span></label>
+                <input type="number" id="f_waveformTransitionSeconds" step="0.1" min="0.1" max="5">
+            </div>
+            <div class="field">
+                <label for="f_waveformDisplayDelaySeconds">Display delay (s)<span class="infoIcon" data-tip="Shifts the reported playback position forward before it's used for BOTH the time text and the bar's own progress -- use this to compensate for display lag.">i</span></label>
+                <input type="number" id="f_waveformDisplayDelaySeconds" step="0.1" min="0" max="5">
+            </div>
+            <div class="field">
+                <label for="f_waveformTimeOffsetSeconds">Bar lead time (s)<span class="infoIcon" data-tip="A separate lead-in added only to the bar's own rendered position (not the time text), for smoother transitions between position updates.">i</span></label>
+                <input type="number" id="f_waveformTimeOffsetSeconds" step="0.1" min="0" max="5">
+            </div>
+        </fieldset>
+
+        <div class="actions">
+            <button class="primary danger" id="restoreLookFeelDefaults">Restore defaults</button>
+            <button class="primary danger" id="saveAllAsDefaults">Save all as defaults</button>
+            <span class="status" id="lookfeelStatus"></span>
+        </div>
+    </section>
+
+    <!-- ============ Data Sources ============ -->
+    <section id="tab-datasources" class="tab">
+        <div id="datasourcesDisabledNotice" class="disabledNotice">
+            ROON_DISPLAY_UI_PATH isn't set yet — set it in the "API Keys &amp; Config" tab first.
+        </div>
+        <div id="datasourcesBanner" class="banner"></div>
+
+        <fieldset>
+            <legend>Album Info Sources</legend>
+            <div class="field">
+                <label>Source order<span class="infoIcon" data-tip="Order in which Discogs/iTunes/Deezer are tried when looking up album info — first match wins.">i</span><span class="hint">Tried in this order, first match wins</span></label>
+                <div class="reorder-list" id="sourceOrderList"></div>
+            </div>
+            <div class="field">
+                <label for="f_debug">Debug overlay<span class="infoIcon" data-tip="Shows an on-screen debug log panel and error banner for the album-info matching pipeline.">i</span></label>
+                <input type="checkbox" id="f_debug">
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Fuzzy Matching Thresholds</legend>
+            <div class="field">
+                <label for="f_minArtistSimilarity">Min artist similarity<span class="infoIcon" data-tip="Minimum artist-name match score (0–1) for a candidate to be accepted at all, regardless of title match.">i</span><span class="hint">0–1, candidate rejected below this</span></label>
+                <input type="number" id="f_minArtistSimilarity" step="0.05" min="0" max="1">
+            </div>
+            <div class="field">
+                <label for="f_minTitleSimilarity">Min title similarity<span class="infoIcon" data-tip="Minimum title match score (0–1) for a candidate to be accepted at all, regardless of artist match.">i</span></label>
+                <input type="number" id="f_minTitleSimilarity" step="0.05" min="0" max="1">
+            </div>
+        </fieldset>
+
+        <div class="actions">
+            <button class="primary danger" id="restoreDataSourcesDefaults">Restore defaults</button>
+            <button class="primary danger" id="saveAllAsDefaultsDataSources">Save all as defaults</button>
+            <span class="status" id="datasourcesStatus"></span>
+        </div>
+    </section>
+
+    <!-- ============ API Keys & Config ============ -->
+    <section id="tab-apikeys" class="tab">
+        <div id="apikeysBanner" class="banner"></div>
+
+        <fieldset>
+            <legend>API Keys</legend>
+            <div class="field">
+                <label for="f_ANTHROPIC_API_KEY">Anthropic API key<span class="infoIcon" data-tip="Your Anthropic (Claude) API key. Leave blank to keep the current one.">i</span></label>
+                <div><input type="text" id="f_ANTHROPIC_API_KEY" class="maskedInput" autocomplete="off" spellcheck="false"> <button class="primary danger" data-clear-key="ANTHROPIC_API_KEY" style="padding: 6px 10px;">Clear</button> <button class="primary" id="testKey_anthropic" data-test-key="anthropic" style="padding: 6px 10px;" disabled>Test</button> <span class="status" id="testKeyStatus_anthropic"></span></div>
+            </div>
+            <div class="field">
+                <label for="f_OPENAI_API_KEY">OpenAI API key<span class="infoIcon" data-tip="Your OpenAI (ChatGPT) API key. Leave blank to keep the current one.">i</span></label>
+                <div><input type="text" id="f_OPENAI_API_KEY" class="maskedInput" autocomplete="off" spellcheck="false"> <button class="primary danger" data-clear-key="OPENAI_API_KEY" style="padding: 6px 10px;">Clear</button> <button class="primary" id="testKey_openai" data-test-key="openai" style="padding: 6px 10px;" disabled>Test</button> <span class="status" id="testKeyStatus_openai"></span></div>
+            </div>
+            <div class="field">
+                <label for="f_DISCOGS_TOKEN">Discogs token<span class="infoIcon" data-tip="Your Discogs personal access token. Leave blank to keep the current one.">i</span></label>
+                <div><input type="text" id="f_DISCOGS_TOKEN" class="maskedInput" autocomplete="off" spellcheck="false"> <button class="primary danger" data-clear-key="DISCOGS_TOKEN" style="padding: 6px 10px;">Clear</button> <button class="primary" id="testKey_discogs" data-test-key="discogs" style="padding: 6px 10px;" disabled>Test</button> <span class="status" id="testKeyStatus_discogs"></span></div>
+            </div>
+            <p class="hint" style="margin: 6px 0 0;">Leave a field blank to keep its current value. Fields above show nothing even when a key is already set — that's expected, the real value is never sent back to the browser. "Clear" removes a key immediately. Typed values here are picked up by the header's "Save & Restart Server" button, along with every other tab. "Test" checks whatever is currently saved (not what's typed in the field above, which is always blank) against a free, no-cost endpoint -- disabled when nothing is set yet.</p>
+        </fieldset>
+
+        <div class="actions" style="margin-bottom: 24px;">
+            <span class="status" id="apiKeysStatus"></span>
+        </div>
+    </section>
+
+    <section id="tab-ai" class="tab">
+        <fieldset>
+            <legend>AI Settings</legend>
+            <div class="field">
+                <label for="f_aiLanguage">Response language<span class="infoIcon" data-tip="Language the AI is instructed to respond in, e.g. 'English'.">i</span></label>
+                <input type="text" id="f_aiLanguage" placeholder="English">
+            </div>
+            <div class="field">
+                <label for="f_textLengthWords">Text length (words)<span class="infoIcon" data-tip="Target word count for AI-generated review/composition/bio text.">i</span></label>
+                <input type="number" id="f_textLengthWords" step="1" min="20">
+            </div>
+            <div class="field">
+                <label>Provider order<span class="infoIcon" data-tip="Order AI providers are tried — the first one with a configured API key becomes the default.">i</span><span class="hint">First with a configured key is the default</span></label>
+                <div class="reorder-list" id="providerOrderList"></div>
+            </div>
+            <div class="field">
+                <label for="f_modelClaude">Claude model<span class="infoIcon" data-tip="Claude model name or alias, e.g. 'claude-sonnet-5'.">i</span></label>
+                <input type="text" id="f_modelClaude" placeholder="claude-sonnet-5">
+            </div>
+            <div class="field">
+                <label for="f_modelChatgpt">ChatGPT model<span class="infoIcon" data-tip="ChatGPT model name or alias, e.g. 'gpt-5.6'.">i</span></label>
+                <input type="text" id="f_modelChatgpt" placeholder="gpt-5.6">
+            </div>
+            <div class="field">
+                <label for="f_reasoningEffort">ChatGPT reasoning effort<span class="infoIcon" data-tip="How much the model 'thinks' before answering. Higher is slower but more thorough.">i</span></label>
+                <select id="f_reasoningEffort">
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                </select>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Web Search <span id="webSearchCostWarning" class="costWarning" style="display: none;">&#9888; Additional AI costs</span></legend>
+            <div class="field">
+                <label for="f_webSearchMode">Web searches<span class="infoIcon" data-tip="'Never': the model uses only AI training data, no web access, no extra cost (default). 'When useful': the model decides whether to search based on how confident it is. 'Always': forces at least one search every time.">i</span></label>
+                <select id="f_webSearchMode">
+                    <option value="never">Never</option>
+                    <option value="whenUseful">When useful</option>
+                    <option value="always">Always</option>
+                </select>
+            </div>
+            <div class="field" id="webSearchMaxUsesField">
+                <label id="webSearchMaxUsesLabel" for="f_webSearchMaxUses">Max web searches<span class="infoIcon" data-tip="Maximum number of separate web searches the model may perform per generation. Higher values allow more thorough research for obscure artists, at higher (and less predictable) cost. Only applies when Web searches is above Never.">i</span></label>
+                <input type="number" id="f_webSearchMaxUses" step="1" min="1" max="3">
+            </div>
+            <div class="field">
+                <label for="f_useDomainFilter">Use domain filter<span class="infoIcon" data-tip="When on, searches are restricted to the domains listed below. When off, searches are unrestricted, but the list below is kept (not cleared) for later.">i</span></label>
+                <input type="checkbox" id="f_useDomainFilter" style="width: auto;">
+            </div>
+            <div class="field" id="preferredDomainsField" style="align-items: flex-start;">
+                <label id="preferredDomainsLabel" for="f_preferredDomains">Preferred domains<span class="infoIcon" data-tip="One domain per line, e.g. 'allmusic.com'. Only used when 'Use domain filter' is on. If none of these domains have relevant results, the search returns nothing unless 'Fall back if empty' is on.">i</span></label>
+                <textarea id="f_preferredDomains" rows="6" placeholder="allmusic.com"></textarea>
+            </div>
+            <div class="field" id="fallbackIfEmptyField">
+                <label id="fallbackIfEmptyLabel" for="f_fallbackIfEmpty">Fall back to unfiltered search if empty<span class="infoIcon" data-tip="If the domain-filtered search finds nothing, retry once without any domain restriction. Doubles the cost and wait time for that generation when it triggers -- only happens on an empty first result, not on every request.">i</span></label>
+                <input type="checkbox" id="f_fallbackIfEmpty" style="width: auto;">
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Style Prompts</legend>
+            <p class="hint" style="margin: 0 0 10px;">Leave blank for neutral, unstyled text (the default). Write in any language you like — the AI still replies in the "Response language" set above regardless of what language you write these in.</p>
+            <div class="field" style="align-items: flex-start;">
+                <label for="f_styleAlbum">Album<span class="infoIcon" data-tip="Style guidance for the Album review text. E.g. 'sarcastic, like a jaded music critic' or 'in the style of a 1970s liner note'.">i</span></label>
+                <textarea id="f_styleAlbum" rows="3" placeholder="(neutral)"></textarea>
+            </div>
+            <div class="field" style="align-items: flex-start;">
+                <label for="f_styleComposition">Composition<span class="infoIcon" data-tip="Style guidance for the Composition analysis text.">i</span></label>
+                <textarea id="f_styleComposition" rows="3" placeholder="(neutral)"></textarea>
+            </div>
+            <div class="field" style="align-items: flex-start;">
+                <label for="f_styleArtist">Artist<span class="infoIcon" data-tip="Style guidance for the Artist bio text.">i</span></label>
+                <textarea id="f_styleArtist" rows="3" placeholder="(neutral)"></textarea>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Disambiguation during text generation</legend>
+            <p class="hint" style="margin: 0 0 10px;">When enabled for a kind, its prompt asks the model to flag genuine ambiguity (a title that could refer to more than one truly distinct album/track/artist) instead of silently guessing. When that happens, the remote shows the candidates as a pick-list instead of the generated text -- picking one triggers a real second generation for that specific one, which IS cached normally. Costs a little extra on every request for an enabled kind (the added instruction), and roughly doubles the cost of the specific requests that do turn out ambiguous (two real calls instead of one). If none of these are checked, generation works exactly as it did before this feature existed.</p>
+            <div class="field">
+                <label for="f_disambiguationArtist">Artist</label>
+                <input type="checkbox" id="f_disambiguationArtist">
+            </div>
+            <div class="field">
+                <label for="f_disambiguationAlbum">Album</label>
+                <input type="checkbox" id="f_disambiguationAlbum">
+            </div>
+            <div class="field">
+                <label for="f_disambiguationComposition">Composition</label>
+                <input type="checkbox" id="f_disambiguationComposition">
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Key normalization</legend>
+            <p class="hint" style="margin: 0 0 10px;">Custom rules for matching "the same" album or track across slightly different spellings (a remaster tag, a live/remix suffix) so they share one cached result instead of generating separately. Never applied to artist names. Runs AFTER spacing/case/accent normalization (already applied to everything, not shown here) -- so writing "live" below also catches "Live" and "LIVE", and "remaster" also catches "remastered" as a plain substring.</p>
+            <p class="hint" style="margin: 0 0 10px;">Rows run in order, each on the result of the one before it -- every row gets a turn, not just the first one that matches. Within one row, its symbols (one per line) are tried in the order written; the first one that matches wins and that row is done. Leave "If following text contains" blank to always cut once the symbol is found at all.</p>
+            <table id="keyNormTable" style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding: 4px 6px; font-size: 12px; color: var(--text-dim);">Remove all text as of this symbol</th>
+                        <th style="text-align: left; padding: 4px 6px; font-size: 12px; color: var(--text-dim);">If following text contains</th>
+                        <th style="text-align: center; padding: 4px 6px; font-size: 12px; color: var(--text-dim); width: 90px;">Only if following text does not contain same symbol</th>
+                        <th style="text-align: center; padding: 4px 6px; font-size: 12px; color: var(--text-dim); width: 60px;">Applies to Album</th>
+                        <th style="text-align: center; padding: 4px 6px; font-size: 12px; color: var(--text-dim); width: 60px;">Applies to Track</th>
+                        <th style="width: 30px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="keyNormTableBody"></tbody>
+            </table>
+            <button type="button" class="primary" id="addKeyNormRow">+ Add row</button>
+        </fieldset>
+
+        <div class="actions" style="margin-bottom: 24px;">
+            <span class="status" id="aiConfigStatus"></span>
+        </div>
+    </section>
+
+    <section id="tab-network" class="tab">
+        <fieldset>
+            <legend>Network</legend>
+            <div class="field">
+                <label for="f_PROXY_HOST">Proxy host<span class="infoIcon" data-tip="This Mac's IP address on your local network.">i</span></label>
+                <input type="text" id="f_PROXY_HOST" placeholder="192.168.2.11">
+            </div>
+            <div class="field">
+                <label for="f_PORT">Proxy port<span class="infoIcon" data-tip="Port the proxy listens on.">i</span></label>
+                <input type="number" id="f_PORT" placeholder="3001">
+            </div>
+            <div class="field">
+                <label for="f_ALLOWED_ORIGIN">Allowed origin<span class="infoIcon" data-tip="CORS origin allowed to call this proxy. '*' allows any origin.">i</span></label>
+                <input type="text" id="f_ALLOWED_ORIGIN" placeholder="*">
+            </div>
+            <div class="field">
+                <label for="f_ROON_DISPLAY_UI_PATH">Roon display_ui.html path<span class="infoIcon" data-tip="Absolute path to the real display_ui.html served by Roon. Required for the Look and Feel and Data Sources tabs to work.">i</span></label>
+                <input type="text" id="f_ROON_DISPLAY_UI_PATH" placeholder="/absolute/path/to/display_ui.html">
+            </div>
+            <div id="ipMismatchBanner" class="banner info" style="display: none;"></div>
+        </fieldset>
+
+        <div class="actions" style="margin-bottom: 24px;">
+            <span class="status" id="networkStatus"></span>
+        </div>
+
+        <fieldset>
+            <legend>Password Manager</legend>
+            <div class="field" style="align-items: flex-start;">
+                <label>Change password<span class="infoIcon" data-tip="Changing this restarts the proxy and logs you out -- log back in with the new password.">i</span></label>
+                <div>
+                    <input type="text" id="netNewSecret" class="maskedInput" placeholder="New" autocomplete="off" spellcheck="false"><br>
+                    <input type="text" id="netConfirmSecret" class="maskedInput" placeholder="Confirm" autocomplete="off" spellcheck="false" style="margin-top: 6px;">
+                </div>
+            </div>
+            <div id="netPasswordError" class="banner warn" style="display: none;"></div>
+            <div class="actions">
+                <button class="primary" id="netChangePassword">Change password</button>
+                <span class="status" id="netPasswordStatus"></span>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Backup</legend>
+            <p class="hint" style="margin: 0 0 10px;">Exports AI settings (config.json), style prompts, Look and Feel, and Data Sources — plus the non-secret network fields (host/port/origin/path). API keys and the admin password are never included, on either side.</p>
+            <div class="field">
+                <label>Export configuration<span class="infoIcon" data-tip="Downloads a JSON file with the current settings, except API keys and the admin password.">i</span></label>
+                <button class="primary" id="exportConfig">Export to file</button>
+            </div>
+            <div class="field">
+                <label for="f_importFile">Import configuration<span class="infoIcon" data-tip="Pick a file exported from this same panel, then click Apply. Shows what will change before anything is saved.">i</span></label>
+                <input type="file" id="f_importFile" accept="application/json">
+            </div>
+            <div class="actions">
+                <button class="primary" id="applyImport" disabled>Apply imported file</button>
+                <span class="status" id="importStatus"></span>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>AI Cache</legend>
+            <p class="hint" style="margin: 0 0 10px;">Past AI-generated album reviews, composition notes, and artist bios (ai-cache.json) -- separate from settings, so clearing/exporting/importing here never touches config.json or .env, and doesn't need a proxy restart to take effect.</p>
+            <p class="hint" id="aiCacheCountHint" style="margin: 0 0 10px;">Currently cached: &hellip;</p>
+
+            <p class="hint" style="margin: 10px 0 4px; font-weight: bold;">Date filter</p>
+            <p class="hint" style="margin: 0 0 10px;">Applies to all four Clear buttons below. Entries with no recorded creation date (from before this feature existed) are only ever affected by "Any date" -- a specific-date filter never touches them, since their real age isn't known.</p>
+            <div class="field">
+                <label for="f_cacheDateMode">Filter mode</label>
+                <select id="f_cacheDateMode">
+                    <option value="any">Any date</option>
+                    <option value="on">Created on</option>
+                    <option value="before">Date or older</option>
+                    <option value="range">Date range</option>
+                </select>
+            </div>
+            <div class="field" id="cacheDateOnField" style="display: none;">
+                <label for="f_cacheDateOn">Date</label>
+                <input type="date" id="f_cacheDateOn">
+            </div>
+            <div class="field" id="cacheDateBeforeField" style="display: none;">
+                <label for="f_cacheDateBefore">Date or older than</label>
+                <input type="date" id="f_cacheDateBefore">
+            </div>
+            <div class="field" id="cacheDateRangeField" style="display: none;">
+                <label>Date range</label>
+                <div><input type="date" id="f_cacheDateRangeStart"> to <input type="date" id="f_cacheDateRangeEnd"></div>
+            </div>
+
+            <p class="hint" style="margin: 14px 0 4px; font-weight: bold;">Clear</p>
+            <div class="field">
+                <label>Clear cache<span class="infoIcon" data-tip="Deletes cached AI responses matching the date filter above. The next time a matching album/track/artist is opened, it's generated fresh (and re-cached).">i</span></label>
+                <div style="display: grid; grid-template-columns: repeat(2, auto); gap: 8px;">
+                    <button class="primary danger" id="clearAiCache">All</button>
+                    <button class="primary danger" id="clearArtistCache">Artist</button>
+                    <button class="primary danger" id="clearAlbumCache">Album</button>
+                    <button class="primary danger" id="clearCompositionCache">Composition</button>
+                </div>
+                <span class="status" id="clearAiCacheStatus"></span>
+            </div>
+            <div class="field">
+                <label>Export cache<span class="infoIcon" data-tip="Downloads a JSON file with every cached AI response, e.g. to keep before an uninstall or to move to another machine.">i</span></label>
+                <button class="primary" id="exportAiCache">Export to file</button>
+            </div>
+            <div class="field">
+                <label for="f_importCacheFile">Import cache<span class="infoIcon" data-tip="Pick a file exported from this same section. Merges by key -- entries already cached that aren't in the imported file are kept, not wiped.">i</span></label>
+                <input type="file" id="f_importCacheFile" accept="application/json">
+            </div>
+            <div class="actions">
+                <button class="primary" id="applyImportCache" disabled>Apply imported cache</button>
+                <span class="status" id="importCacheStatus"></span>
+            </div>
+        </fieldset>
+    </section>
+
+    <section id="tab-logs" class="tab">
+        <div id="logsDisabledNotice" class="disabledNotice">
+            ROON_DISPLAY_UI_PATH isn't set yet — set it in the "Network &amp; maintenance" tab first.
+        </div>
+        <div id="logsBanner" class="banner"></div>
+
+        <fieldset>
+            <legend>Debug Logging</legend>
+            <p class="hint" style="margin: 0 0 10px;">For diagnosing display-side issues (the TV/Safari display, not this admin panel) that are hard to reproduce or inspect -- there's no practical way to open a browser console on an actual TV. Both channels are independent and off by default so an unattended screen stays quiet.</p>
+            <div class="field">
+                <label for="f_logsToTerminal">Send to terminal<span class="infoIcon" data-tip="Relays each debug message to this proxy, which prints it to proxy.log (prefixed [display]) -- readable on the Mac via 'tail -f proxy.log', no TV-side access needed.">i</span></label>
+                <input type="checkbox" id="f_logsToTerminal">
+            </div>
+            <div class="field">
+                <label for="f_logsToScreen">Show on screen<span class="infoIcon" data-tip="Shows a scrolling log strip directly on the display (bottom of the screen), for situations where you're standing in front of the TV without Mac/terminal access at hand.">i</span></label>
+                <input type="checkbox" id="f_logsToScreen">
+            </div>
+        </fieldset>
+
+        <div class="actions">
+            <button class="primary danger" id="restoreLogsDefaults">Restore defaults</button>
+            <button class="primary danger" id="saveAllAsDefaultsLogs">Save all as defaults</button>
+            <span class="status" id="logsStatus"></span>
+        </div>
+    </section>
+
+    <!-- ============ Version ============ -->
+    <section id="tab-version" class="tab">
+        <fieldset>
+            <legend>Version</legend>
+            <div class="field">
+                <label>Display UI (HTML)</label>
+                <span id="v_displayUi">&mdash;</span>
+            </div>
+            <div class="field">
+                <label>Display UI (JS)</label>
+                <span id="v_displayUiJs">&mdash;</span>
+            </div>
+            <div class="field">
+                <label>Admin</label>
+                <span id="v_admin">&mdash;</span>
+            </div>
+        </fieldset>
+    </section>
+
+</main>
+
+<script>
+(function () {
+    'use strict';
+
+    try {
+
+    let current = null; // last GET /api/config response, refreshed after every save
+
+    // Set by the login screen after a successful POST /api/login (see
+    // further down) -- not asked via window.prompt() anymore, and not
+    // relying on the browser reusing native Basic Auth credentials either
+    // (Safari's fetch() doesn't reliably do that reuse, see git history).
+    // null until login succeeds; every fetch() below attaches whatever
+    // this currently holds.
+    let authHeader = null;
+
+    // ---- fetch helpers ----------------------------------------------------
+    async function apiGet(path) {
+        const res = await fetch(path, { headers: { Authorization: authHeader } });
+        if (res.status === 401) throw new Error('401 Unauthorized -- session no longer valid, please log in again.');
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' for ' + path);
+        return res.json();
+    }
+
+    async function apiPost(path, body) {
+        const res = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json().catch(function () { return {}; });
+        if (!res.ok) {
+            const err = new Error(data.error || ('HTTP ' + res.status));
+            if (data.permissionIssue) {
+                err.permissionIssue = true;
+                err.nodePath = data.nodePath;
+                err.instructions = data.instructions;
+            }
+            throw err;
+        }
+        return data;
+    }
+
+    function setStatus(id, message, kind) {
+        const el = document.getElementById(id);
+        el.textContent = message;
+        el.className = 'status' + (kind ? ' ' + kind : '');
+    }
+
+    function showBanner(id, message, kind) {
+        const el = document.getElementById(id);
+        el.textContent = message;
+        el.className = 'banner visible ' + kind;
+    }
+    function hideBanner(id) {
+        document.getElementById(id).className = 'banner';
+    }
+
+    // Renders the macOS permission walkthrough into the always-visible
+    // global banner (so it's seen regardless of which tab triggered it),
+    // plus a short pointer in the tab's own status line. nodePath is
+    // shown in a <code> block for easy copy-paste into Finder's
+    // Cmd+Shift+G dialog.
+    function showPermissionError(statusId, err) {
+        setStatus(statusId, 'Blocked by macOS permissions — see the notice above for how to fix it.', 'err');
+        const banner = document.getElementById('globalBanner');
+        const steps = (err.instructions || []).map(function (s) { return '<li>' + s.replace(err.nodePath, '<code>' + err.nodePath + '</code>') + '</li>'; }).join('');
+        banner.innerHTML = '<strong>macOS is blocking this write to display_ui.html (Full Disk Access needed).</strong>' +
+            '<ol style="margin: 8px 0 4px 20px; padding: 0;">' + steps + '</ol>';
+        banner.className = 'banner visible warn';
+    }
+
+    // ---- tabs ---------------------------------------------------------------
+    document.querySelectorAll('.tabBtn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.tabBtn').forEach(function (b) { b.classList.remove('active'); });
+            document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+            btn.classList.add('active');
+            document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        });
+    });
+
+    // ---- color <-> hex helpers (accentColor is stored as 'rgb(r, g, b)') ---
+    function rgbStringToHex(rgbStr) {
+        const m = /(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(rgbStr || '');
+        if (!m) return '#000000';
+        const toHex = function (n) { return ('0' + parseInt(n, 10).toString(16)).slice(-2); };
+        return '#' + toHex(m[1]) + toHex(m[2]) + toHex(m[3]);
+    }
+    function hexToRgbString(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return 'rgb(' + r + ', ' + g + ', ' + b + ')';
+    }
+    // ---- reorderable list (used for sourceOrder and providerOrder) ---------
+    function renderReorderList(containerEl, items, labels) {
+        containerEl.innerHTML = '';
+        items.forEach(function (item, i) {
+            const row = document.createElement('div');
+            row.className = 'reorder-item';
+            const label = document.createElement('span');
+            label.textContent = (labels && labels[item]) || item;
+            const buttons = document.createElement('div');
+            buttons.className = 'buttons';
+            const up = document.createElement('button');
+            up.textContent = '\u2191';
+            up.disabled = i === 0;
+            up.addEventListener('click', function () {
+                const tmp = items[i - 1];
+                items[i - 1] = items[i];
+                items[i] = tmp;
+                renderReorderList(containerEl, items, labels);
+            });
+            const down = document.createElement('button');
+            down.textContent = '\u2193';
+            down.disabled = i === items.length - 1;
+            down.addEventListener('click', function () {
+                const tmp = items[i + 1];
+                items[i + 1] = items[i];
+                items[i] = tmp;
+                renderReorderList(containerEl, items, labels);
+            });
+            buttons.appendChild(up);
+            buttons.appendChild(down);
+            row.appendChild(label);
+            row.appendChild(buttons);
+            containerEl.appendChild(row);
+        });
+        containerEl._items = items; // stash current order for the save handler to read back
+    }
+
+    // ---- populate form from GET /api/config ---------------------------------
+    function populate(data) {
+        current = data;
+
+        // Look and Feel
+        const lf = data.lookAndFeel;
+        displayUiConfigured = !!data.displayUiConfigured;
+        const lfDisabled = !data.displayUiConfigured || !lf;
+        document.getElementById('lookfeelDisabledNotice').style.display = lfDisabled ? 'block' : 'none';
+        if (lf) {
+            document.getElementById('f_accentColor').value = lf.accentColor || '';
+            document.getElementById('f_accentColorPicker').value = rgbStringToHex(lf.accentColor);
+            document.getElementById('f_queuePanelBrightness').value = lf.queuePanelBrightness;
+            document.getElementById('f_queuePanelOpacity').value = lf.queuePanelOpacity;
+            document.getElementById('f_controlBarBackgroundOpacity').value = lf.controlBarBackgroundOpacity;
+            document.getElementById('f_barAutoHideMs').value = lf.barAutoHideMs;
+            document.getElementById('f_dimmingOverlayColor').value = lf.dimmingOverlayColor || '';
+            document.getElementById('f_dimmingOverlayColorPicker').value = rgbStringToHex(lf.dimmingOverlayColor);
+            document.getElementById('f_albumCoverWidthPercent').value = lf.albumCoverWidthPercent;
+            document.getElementById('f_albumCoverMaxHeightVh').value = lf.albumCoverMaxHeightVh;
+            document.getElementById('f_albumArtBrightness').value = lf.albumArtBrightness || '';
+            document.getElementById('f_albumArtContrast').value = lf.albumArtContrast || '';
+            document.getElementById('f_albumInfoBackOpacity').value = lf.albumInfoBackOpacity;
+            document.getElementById('f_showAlbumLine').checked = lf.showAlbumLine !== false;
+            document.getElementById('f_showTrackLine').checked = lf.showTrackLine !== false;
+            document.getElementById('f_showArtistsLine').checked = lf.showArtistsLine !== false;
+            document.getElementById('f_clockEnabled').checked = lf.clockEnabled !== false;
+            document.getElementById('f_clockFontSize').value = lf.clockFontSize || '';
+            document.getElementById('f_clockHour12').checked = lf.clockHour12 === true;
+            document.getElementById('f_artistArtSaturate').value = lf.artistArtSaturate || '';
+            document.getElementById('f_artistArtContrast').value = lf.artistArtContrast || '';
+            document.getElementById('f_artistArtBrightness').value = lf.artistArtBrightness || '';
+            document.getElementById('f_bgAlbumArtSepia').value = lf.bgAlbumArtSepia || '';
+            document.getElementById('f_bgAlbumArtSaturate').value = lf.bgAlbumArtSaturate || '';
+            document.getElementById('f_bgAlbumArtHueRotate').value = lf.bgAlbumArtHueRotate || '';
+            document.getElementById('f_bgAlbumArtContrast').value = lf.bgAlbumArtContrast || '';
+            document.getElementById('f_bgAlbumArtBrightness').value = lf.bgAlbumArtBrightness || '';
+            document.getElementById('f_aiBoxHeightVh').value = (lf.aiBoxHeightVh === null || lf.aiBoxHeightVh === undefined) ? '' : lf.aiBoxHeightVh;
+            document.getElementById('f_aiBodyFontSizeVh').value = lf.aiBodyFontSizeVh;
+            document.getElementById('f_aiSourceFontSizeVh').value = lf.aiSourceFontSizeVh;
+
+            document.getElementById('f_waveformBarSizePct').value = lf.waveformBarSizePct;
+            document.getElementById('f_waveformCornerRadiusPct').value = lf.waveformCornerRadiusPct;
+            document.getElementById('f_waveformBarPixelRatio').value = lf.waveformBarPixelRatio;
+            document.getElementById('f_waveformIntensity').value = lf.waveformIntensity;
+            document.getElementById('f_waveformFgFirstStep').value = lf.waveformFgFirstStep;
+            document.getElementById('f_waveformFgFirstOpacity').value = lf.waveformFgFirstOpacity;
+            document.getElementById('f_waveformFgCenterOpacity').value = lf.waveformFgCenterOpacity;
+            document.getElementById('f_waveformBgEdgeOpacity').value = lf.waveformBgEdgeOpacity;
+            document.getElementById('f_waveformBgFirstStep').value = lf.waveformBgFirstStep;
+            document.getElementById('f_waveformBgFirstOpacity').value = lf.waveformBgFirstOpacity;
+            document.getElementById('f_waveformBgCenterOpacity').value = lf.waveformBgCenterOpacity;
+            document.getElementById('f_colorBarEdgeOpacity').value = lf.colorBarEdgeOpacity;
+            document.getElementById('f_colorBarInnerStopPct').value = lf.colorBarInnerStopPct;
+            document.getElementById('f_colorBarInnerOpacity').value = lf.colorBarInnerOpacity;
+            document.getElementById('f_waveformTransitionSeconds').value = lf.waveformTransitionSeconds;
+            document.getElementById('f_waveformDisplayDelaySeconds').value = lf.waveformDisplayDelaySeconds;
+            document.getElementById('f_waveformTimeOffsetSeconds').value = lf.waveformTimeOffsetSeconds;
+            renderWaveformPreview();
+        }
+
+        // Single reference for "what to reset a field to" -- see
+        // addPerFieldResetButtons's own comment. Set on every load (cheap,
+        // and keeps it current if this file is ever hand-edited and the
+        // proxy restarted), but the buttons themselves are only created
+        // once, guarded below, so reloading never piles up duplicates.
+        lookAndFeelDefaults = data.lookAndFeelDefaults || {};
+        if (!lookAndFeelResetButtonsAdded) {
+            addPerFieldResetButtons(lookAndFeelDefaults, 'lookfeelStatus');
+            lookAndFeelResetButtonsAdded = true;
+        }
+        dataSourcesDefaults = data.dataSourcesDefaults || {};
+        if (!dataSourcesResetButtonsAdded) {
+            addPerFieldResetButtons(dataSourcesDefaults, 'datasourcesStatus');
+            dataSourcesResetButtonsAdded = true;
+        }
+        logsDefaults = data.logsDefaults || {};
+        if (!logsResetButtonsAdded) {
+            addPerFieldResetButtons(logsDefaults, 'logsStatus');
+            logsResetButtonsAdded = true;
+        }
+
+        // Data Sources
+        const ds = data.dataSources;
+        const dsDisabled = !data.displayUiConfigured || !ds;
+        document.getElementById('datasourcesDisabledNotice').style.display = dsDisabled ? 'block' : 'none';
+        if (ds) {
+            renderReorderList(document.getElementById('sourceOrderList'), ds.sourceOrder.slice(), {
+                discogs: 'Discogs', itunes: 'iTunes', deezer: 'Deezer'
+            });
+            document.getElementById('f_debug').checked = !!ds.debug;
+            document.getElementById('f_minArtistSimilarity').value = ds.minArtistSimilarity;
+            document.getElementById('f_minTitleSimilarity').value = ds.minTitleSimilarity;
+        }
+
+        // Logs
+        const lg = data.logs;
+        const logsDisabled = !data.displayUiConfigured || !lg;
+        document.getElementById('logsDisabledNotice').style.display = logsDisabled ? 'block' : 'none';
+        if (lg) {
+            document.getElementById('f_logsToTerminal').checked = !!lg.logsToTerminal;
+            document.getElementById('f_logsToScreen').checked = !!lg.logsToScreen;
+        }
+
+        // Version -- read-only, no save/reset (bumped in code, not from here)
+        const v = data.versions || {};
+        document.getElementById('v_displayUi').textContent = v.displayUi || '—';
+        document.getElementById('v_displayUiJs').textContent = v.displayUiJs || '—';
+        document.getElementById('v_admin').textContent = v.admin || '—';
+
+        // API Keys -- secret fields intentionally left blank (masked value
+        // is shown only as a placeholder, see the hint text in the form
+        // itself). ADMIN_PASSWORD isn't here -- it moved to the Password
+        // Manager in Network & Maintenance, which never pre-fills it either.
+        const TEST_KEY_SLUGS = { ANTHROPIC_API_KEY: 'anthropic', OPENAI_API_KEY: 'openai', DISCOGS_TOKEN: 'discogs' };
+        ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'DISCOGS_TOKEN'].forEach(function (key) {
+            const el = document.getElementById('f_' + key);
+            el.value = '';
+            el.placeholder = data.env[key] || '(not set)';
+            const slug = TEST_KEY_SLUGS[key];
+            document.getElementById('testKey_' + slug).disabled = !data.env[key];
+            setStatus('testKeyStatus_' + slug, '', '');
+        });
+        document.getElementById('f_PROXY_HOST').value = data.env.PROXY_HOST || '';
+        document.getElementById('f_PORT').value = data.env.PORT || '';
+        document.getElementById('f_ALLOWED_ORIGIN').value = data.env.ALLOWED_ORIGIN || '';
+        document.getElementById('f_ROON_DISPLAY_UI_PATH').value = data.env.ROON_DISPLAY_UI_PATH || '';
+
+        const ipBanner = document.getElementById('ipMismatchBanner');
+        if (data.detectedIp) {
+            const macLine = data.detectedMac ? (' Its network hardware address (MAC) is <code>' + data.detectedMac + '</code> — use it to set a DHCP reservation or static IP in your router, so this address never changes.') : '';
+            if (data.env.PROXY_HOST && data.env.PROXY_HOST !== data.detectedIp) {
+                ipBanner.className = 'banner visible warn';
+                ipBanner.innerHTML = '\u26a0\ufe0f This Mac\'s current IP (<code>' + data.detectedIp + '</code>) is different from the configured Proxy host (<code>' + data.env.PROXY_HOST + '</code>) — the TV likely can\'t reach the proxy right now. ' +
+                    '<button class="primary" id="useDetectedIp" style="margin-left: 8px;">Use ' + data.detectedIp + '</button>' + macLine;
+                document.getElementById('useDetectedIp').addEventListener('click', function () {
+                    document.getElementById('f_PROXY_HOST').value = data.detectedIp;
+                });
+            } else {
+                ipBanner.className = 'banner visible info';
+                ipBanner.innerHTML = 'This Mac\'s current IP is <code>' + data.detectedIp + '</code>.' + macLine;
+            }
+        } else {
+            ipBanner.className = 'banner';
+        }
+
+        document.getElementById('f_aiLanguage').value = data.aiConfig.aiLanguage;
+        document.getElementById('f_textLengthWords').value = data.aiConfig.textLengthWords;
+        renderReorderList(document.getElementById('providerOrderList'), data.aiConfig.providerOrder.slice(), {
+            claude: 'Claude', chatgpt: 'ChatGPT'
+        });
+        document.getElementById('f_modelClaude').value = (data.aiConfig.models && data.aiConfig.models.claude) || '';
+        document.getElementById('f_modelChatgpt').value = (data.aiConfig.models && data.aiConfig.models.chatgpt) || '';
+        document.getElementById('f_reasoningEffort').value = (data.aiConfig.reasoningEffort && data.aiConfig.reasoningEffort.chatgpt) || 'medium';
+        const sp = data.aiConfig.stylePrompts || {};
+        document.getElementById('f_styleAlbum').value = sp.album || '';
+        document.getElementById('f_styleComposition').value = sp.composition || '';
+        document.getElementById('f_styleArtist').value = sp.artist || '';
+        const disambig = data.aiConfig.disambiguation || {};
+        document.getElementById('f_disambiguationArtist').checked = !!disambig.artist;
+        document.getElementById('f_disambiguationAlbum').checked = !!disambig.album;
+        document.getElementById('f_disambiguationComposition').checked = !!disambig.composition;
+        renderKeyNormTable(data.aiConfig.keyNormalizationRules || []);
+
+        // Defaults here matter for config.json files written before this
+        // feature existed (webSearch key simply absent) -- same "never/1"
+        // fresh-install defaults as config.json itself, not arbitrary.
+        const ws = data.aiConfig.webSearch || { mode: 'never', maxUses: 1, useDomainFilter: false, preferredDomains: [], fallbackIfEmpty: true };
+        document.getElementById('f_webSearchMode').value = ws.mode || 'never';
+        document.getElementById('f_webSearchMaxUses').value = ws.maxUses || 1;
+        document.getElementById('f_useDomainFilter').checked = !!ws.useDomainFilter;
+        document.getElementById('f_preferredDomains').value = (ws.preferredDomains || []).join('\n');
+        document.getElementById('f_fallbackIfEmpty').checked = ws.fallbackIfEmpty !== false;
+        updateWebSearchUI();
+
+        const cacheCount = typeof data.aiCacheCount === 'number' ? data.aiCacheCount : '?';
+        document.getElementById('aiCacheCountHint').textContent = 'Currently cached: ' + cacheCount + (cacheCount === 1 ? ' entry' : ' entries');
+    }
+
+    // Pure UI state -- greys out fields that don't currently apply and
+    // flags the ones that drive additional AI cost in red, without ever
+    // touching the underlying values (so re-enabling a control shows
+    // whatever was already there, nothing is cleared by toggling).
+    // ---- Soundwave live preview -------------------------------------------
+    // Fixed pseudo-random sample data, generated once (not per-render) so
+    // the preview doesn't visually jitter every time a slider moves --
+    // only colors/shapes/spacing change, not which "song" is simulated.
+    var waveformPreviewData = (function () {
+        var data = [];
+        var seed = 42;
+        function rand() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+        for (var i = 0; i < 200; i++) {
+            // A genuine peak (1.0) every ~40 samples -- real tracks do hit
+            // full amplitude at their loudest moments, and the glow
+            // (#colorbarcontainer) is always 100% of the container height
+            // regardless of track, so the preview should show at least a
+            // few bars that actually reach the canvas edge to match that,
+            // rather than every bar being capped short of it.
+            data.push(i % 40 === 20 ? 1.0 : 0.15 + rand() * 0.75); // 0.15-0.9 otherwise, avoids fully-flat bars
+        }
+        return data;
+    })();
+
+    function clamp(v, fallback, min, max) {
+        if (isNaN(v)) return fallback;
+        return Math.min(max, Math.max(min, v));
+    }
+
+    // Manual rounded-rect path, same approach (and same reasoning -- no
+    // ctx.roundRect() dependency) as roundedBarPath() in display_ui.js.
+    function previewRoundedBarPath(ctx, x, y, w, h, r) {
+        r = Math.max(0, Math.min(r, w / 2, h / 2));
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+    }
+
+    function parseAccentRgbFromField() {
+        var m = /(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(document.getElementById('f_accentColor').value || '');
+        return m ? { r: parseInt(m[1], 10), g: parseInt(m[2], 10), b: parseInt(m[3], 10) } : { r: 0, g: 150, b: 255 };
+    }
+
+    // Mirrors updateWaveform() in display_ui.js as closely as a static
+    // preview reasonably can: same three layers (background wave, glow,
+    // foreground wave), same gradient shapes, same rounded-corner logic.
+    // Not pixel-identical to the real TV (different canvas size, a fixed
+    // demo progress state instead of live playback), but every color and
+    // shape parameter behaves the same way. All numeric inputs are
+    // clamped to a valid range before use -- a stray out-of-range value
+    // typed into a field would otherwise throw inside addColorStop() and
+    // break the whole preview (canvas gradients require stops in 0-1).
+    function renderWaveformPreview() {
+        var canvas = document.getElementById('waveformPreviewCanvas');
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
+        var w = canvas.width, h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+
+        function num(id, fallback, min, max) {
+            return clamp(parseFloat(document.getElementById(id).value), fallback, min, max);
+        }
+
+        var barSizePct = num('f_waveformBarSizePct', 0.4, 0.05, 1);
+        var cornerRadiusPct = num('f_waveformCornerRadiusPct', 0, 0, 0.5);
+        var intensity = Math.round(num('f_waveformIntensity', 200, 0, 255));
+        var fgFirstStep = num('f_waveformFgFirstStep', 0.2, 0, 0.5);
+        var fgFirstOpacity = num('f_waveformFgFirstOpacity', 0.6, 0, 1);
+        var fgCenterOpacity = num('f_waveformFgCenterOpacity', 0.5, 0, 1);
+        var bgEdgeOpacity = num('f_waveformBgEdgeOpacity', 0.2, 0, 1);
+        var bgFirstStep = num('f_waveformBgFirstStep', 0.2, 0, 0.5);
+        var bgFirstOpacity = num('f_waveformBgFirstOpacity', 0.2, 0, 1);
+        var bgCenterOpacity = num('f_waveformBgCenterOpacity', 0.2, 0, 1);
+        var cbEdgeOpacity = num('f_colorBarEdgeOpacity', 0.55, 0, 1);
+        var cbInnerStopPct = num('f_colorBarInnerStopPct', 0.25, 0, 0.5);
+        var cbInnerOpacity = num('f_colorBarInnerOpacity', 0.25, 0, 1);
+
+        var accent = parseAccentRgbFromField();
+        // #waveformprogresscontainer SHRINKS as playback advances (CSS
+        // width goes from 100% toward 0%) and is right-anchored -- so the
+        // white/glow region always hugs the RIGHT edge and eats into itself
+        // from the LEFT as the track plays. The left portion revealed as
+        // time passes shows background-only (grey, "consumed/off"). Fixed
+        // demo state: 45% played -> the lit region spans from 45% to 100%
+        // (roughly "middle to right"), not left to right as first drawn.
+        var progressFrac = 0.45;
+        var consumedWidth = w * progressFrac; // left boundary of the lit (white+glow) region
+
+        // 2 here matches display_config.js's own default -- used as this
+        // fallback only if the field is ever unexpectedly empty/invalid,
+        // which shouldn't normally happen since it's a plain required value now.
+        var barPixelRatio = num('f_waveformBarPixelRatio', 2, 0.5, 8);
+        var pxStep = Math.max(3, Math.round(barPixelRatio / Math.max(barSizePct, 0.05)));
+        var barWidth = pxStep * barSizePct;
+        var radiusPx = barWidth * cornerRadiusPct; // fraction of the bar's OWN width, matches display_ui.js
+
+        // Glow backdrop first (it sits behind the foreground bars, z-index-
+        // wise), lit region only (right side) -- "to top" in the real CSS
+        // gradient means bottom-of-canvas is the 0% stop, matched here.
+        var cbGrad = ctx.createLinearGradient(0, h, 0, 0);
+        var cbEdgeColor = 'rgba(' + accent.r + ',' + accent.g + ',' + accent.b + ',' + cbEdgeOpacity + ')';
+        var cbInnerColor = 'rgba(' + accent.r + ',' + accent.g + ',' + accent.b + ',' + cbInnerOpacity + ')';
+        cbGrad.addColorStop(0, cbEdgeColor);
+        cbGrad.addColorStop(cbInnerStopPct, cbInnerColor);
+        cbGrad.addColorStop(0.5, 'rgba(0,0,0,0)');
+        cbGrad.addColorStop(1 - cbInnerStopPct, cbInnerColor);
+        cbGrad.addColorStop(1, cbEdgeColor);
+        ctx.fillStyle = cbGrad;
+        ctx.fillRect(consumedWidth, 0, w - consumedWidth, h);
+
+        for (var i = 0; i < w; i += pxStep) {
+            var value = waveformPreviewData[Math.floor((i / w) * waveformPreviewData.length)];
+            var barHeight = value * h; // matches display_ui.js's own formula exactly (rectHeight = value * canvasHeight) -- no artificial margin, so a genuine peak sample (1.0) really does reach the canvas edge, consistent with the glow always being 100% height
+            var y = (h - barHeight) / 2;
+
+            // Background bar -- always drawn, full width, own grey gradient.
+            var bgGrad = ctx.createLinearGradient(0, y, 0, y + barHeight);
+            var bgEdgeColor = 'rgba(220,220,220,' + bgEdgeOpacity + ')';
+            var bgFirstColor = 'rgba(220,220,220,' + bgFirstOpacity + ')';
+            bgGrad.addColorStop(0, bgEdgeColor);
+            bgGrad.addColorStop(bgFirstStep, bgFirstColor);
+            bgGrad.addColorStop(0.5, 'rgba(220,220,220,' + bgCenterOpacity + ')');
+            bgGrad.addColorStop(1 - bgFirstStep, bgFirstColor);
+            bgGrad.addColorStop(1, bgEdgeColor);
+            ctx.fillStyle = bgGrad;
+            if (radiusPx > 0) { previewRoundedBarPath(ctx, i, y, barWidth, barHeight, radiusPx); ctx.fill(); }
+            else { ctx.fillRect(i, y, barWidth, barHeight); }
+
+            // Foreground bar -- only in the lit (right) region, own grey
+            // (intensity) gradient, edge always fully opaque (not adjustable,
+            // matches display_ui.js).
+            if (i >= consumedWidth) {
+                var fgGrad = ctx.createLinearGradient(0, y, 0, y + barHeight);
+                var fgEdgeColor = 'rgba(' + intensity + ',' + intensity + ',' + intensity + ',1)';
+                var fgFirstColor = 'rgba(' + intensity + ',' + intensity + ',' + intensity + ',' + fgFirstOpacity + ')';
+                fgGrad.addColorStop(0, fgEdgeColor);
+                fgGrad.addColorStop(fgFirstStep, fgFirstColor);
+                fgGrad.addColorStop(0.5, 'rgba(' + intensity + ',' + intensity + ',' + intensity + ',' + fgCenterOpacity + ')');
+                fgGrad.addColorStop(1 - fgFirstStep, fgFirstColor);
+                fgGrad.addColorStop(1, fgEdgeColor);
+                ctx.fillStyle = fgGrad;
+                if (radiusPx > 0) { previewRoundedBarPath(ctx, i, y, barWidth, barHeight, radiusPx); ctx.fill(); }
+                else { ctx.fillRect(i, y, barWidth, barHeight); }
+            }
+        }
+    }
+
+    [
+        'f_waveformBarSizePct', 'f_waveformBarPixelRatio', 'f_waveformCornerRadiusPct', 'f_waveformIntensity',
+        'f_waveformFgFirstStep', 'f_waveformFgFirstOpacity', 'f_waveformFgCenterOpacity',
+        'f_waveformBgEdgeOpacity', 'f_waveformBgFirstStep', 'f_waveformBgFirstOpacity', 'f_waveformBgCenterOpacity',
+        'f_colorBarEdgeOpacity', 'f_colorBarInnerStopPct', 'f_colorBarInnerOpacity',
+        'f_waveformTransitionSeconds', 'f_waveformDisplayDelaySeconds', 'f_waveformTimeOffsetSeconds',
+        'f_accentColor', 'f_accentColorPicker'
+    ].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', renderWaveformPreview);
+    });
+
+    function updateWebSearchUI() {
+        const mode = document.getElementById('f_webSearchMode').value;
+        const searchOn = mode !== 'never';
+        document.getElementById('webSearchCostWarning').style.display = searchOn ? 'inline' : 'none';
+        document.getElementById('f_webSearchMaxUses').disabled = !searchOn;
+        document.getElementById('webSearchMaxUsesField').classList.toggle('fieldGreyedOut', !searchOn);
+        document.getElementById('webSearchMaxUsesLabel').classList.toggle('costLabel', searchOn);
+        document.getElementById('fallbackIfEmptyLabel').classList.toggle('costLabel', searchOn);
+
+        const filterOn = document.getElementById('f_useDomainFilter').checked;
+        document.getElementById('f_preferredDomains').disabled = !filterOn;
+        document.getElementById('f_fallbackIfEmpty').disabled = !filterOn;
+        document.getElementById('preferredDomainsField').classList.toggle('fieldGreyedOut', !filterOn);
+        document.getElementById('fallbackIfEmptyField').classList.toggle('fieldGreyedOut', !filterOn);
+    }
+
+    document.getElementById('f_webSearchMode').addEventListener('change', updateWebSearchUI);
+    document.getElementById('f_useDomainFilter').addEventListener('change', updateWebSearchUI);
+
+    async function loadAll() {
+        try {
+            const data = await apiGet('/api/config');
+            hideBanner('globalBanner');
+            populate(data);
+        } catch (err) {
+            showBanner('globalBanner', 'Could not load configuration: ' + err.message + ' -- open Safari\u2019s Web Inspector (Develop menu) and check the Console/Network tabs for details.', 'warn');
+        }
+    }
+
+    // ---- accent color: keep the picker and the text field in sync ----------
+    document.getElementById('f_accentColorPicker').addEventListener('input', function () {
+        document.getElementById('f_accentColor').value = hexToRgbString(this.value);
+    });
+    document.getElementById('f_accentColor').addEventListener('change', function () {
+        document.getElementById('f_accentColorPicker').value = rgbStringToHex(this.value);
+    });
+
+    // ---- dimming overlay color: now a plain rgb, same pattern as accentColor
+    // (alpha removed -- Enrico: "tengo sempre alpha impostato su 1"; the
+    // separate opacity control for the back-panel is now
+    // f_albumInfoBackOpacity, under Album art) ------------------------------
+    document.getElementById('f_dimmingOverlayColorPicker').addEventListener('input', function () {
+        document.getElementById('f_dimmingOverlayColor').value = hexToRgbString(this.value);
+    });
+    document.getElementById('f_dimmingOverlayColor').addEventListener('change', function () {
+        document.getElementById('f_dimmingOverlayColorPicker').value = rgbStringToHex(this.value);
+    });
+
+    // ---- Save: Look and Feel -------------------------------------------------
+    // No longer bound to its own button -- called by the header's combined
+    // "Save & Restart Server" handler below, alongside every other section.
+    // Returns a success status string, or throws (possibly with
+    // .permissionIssue) on failure -- same contract for every collectAndSave*
+    // function below, so saveAllSections() can treat them uniformly.
+    async function collectAndSaveLookFeel() {
+        if (!displayUiConfigured) return 'Not configured -- skipped (set ROON_DISPLAY_UI_PATH first).';
+        const body = {
+            accentColor: document.getElementById('f_accentColor').value,
+            queuePanelBrightness: parseFloat(document.getElementById('f_queuePanelBrightness').value),
+            queuePanelOpacity: parseFloat(document.getElementById('f_queuePanelOpacity').value),
+            controlBarBackgroundOpacity: parseFloat(document.getElementById('f_controlBarBackgroundOpacity').value),
+            barAutoHideMs: parseFloat(document.getElementById('f_barAutoHideMs').value),
+            dimmingOverlayColor: document.getElementById('f_dimmingOverlayColor').value,
+            albumCoverWidthPercent: parseFloat(document.getElementById('f_albumCoverWidthPercent').value),
+            albumCoverMaxHeightVh: parseFloat(document.getElementById('f_albumCoverMaxHeightVh').value),
+            albumArtBrightness: document.getElementById('f_albumArtBrightness').value,
+            albumArtContrast: document.getElementById('f_albumArtContrast').value,
+            albumInfoBackOpacity: parseFloat(document.getElementById('f_albumInfoBackOpacity').value),
+            showAlbumLine: document.getElementById('f_showAlbumLine').checked,
+            showTrackLine: document.getElementById('f_showTrackLine').checked,
+            showArtistsLine: document.getElementById('f_showArtistsLine').checked,
+            clockEnabled: document.getElementById('f_clockEnabled').checked,
+            clockFontSize: document.getElementById('f_clockFontSize').value,
+            clockHour12: document.getElementById('f_clockHour12').checked,
+            artistArtSaturate: document.getElementById('f_artistArtSaturate').value,
+            artistArtContrast: document.getElementById('f_artistArtContrast').value,
+            artistArtBrightness: document.getElementById('f_artistArtBrightness').value,
+            bgAlbumArtSepia: document.getElementById('f_bgAlbumArtSepia').value,
+            bgAlbumArtSaturate: document.getElementById('f_bgAlbumArtSaturate').value,
+            bgAlbumArtHueRotate: document.getElementById('f_bgAlbumArtHueRotate').value,
+            bgAlbumArtContrast: document.getElementById('f_bgAlbumArtContrast').value,
+            bgAlbumArtBrightness: document.getElementById('f_bgAlbumArtBrightness').value,
+            aiBoxHeightVh: parseFloat(document.getElementById('f_aiBoxHeightVh').value),
+            aiBodyFontSizeVh: parseFloat(document.getElementById('f_aiBodyFontSizeVh').value),
+            aiSourceFontSizeVh: parseFloat(document.getElementById('f_aiSourceFontSizeVh').value),
+            waveformBarSizePct: parseFloat(document.getElementById('f_waveformBarSizePct').value),
+            waveformCornerRadiusPct: parseFloat(document.getElementById('f_waveformCornerRadiusPct').value),
+            waveformBarPixelRatio: parseFloat(document.getElementById('f_waveformBarPixelRatio').value),
+            waveformIntensity: parseFloat(document.getElementById('f_waveformIntensity').value),
+            waveformFgFirstStep: parseFloat(document.getElementById('f_waveformFgFirstStep').value),
+            waveformFgFirstOpacity: parseFloat(document.getElementById('f_waveformFgFirstOpacity').value),
+            waveformFgCenterOpacity: parseFloat(document.getElementById('f_waveformFgCenterOpacity').value),
+            waveformBgEdgeOpacity: parseFloat(document.getElementById('f_waveformBgEdgeOpacity').value),
+            waveformBgFirstStep: parseFloat(document.getElementById('f_waveformBgFirstStep').value),
+            waveformBgFirstOpacity: parseFloat(document.getElementById('f_waveformBgFirstOpacity').value),
+            waveformBgCenterOpacity: parseFloat(document.getElementById('f_waveformBgCenterOpacity').value),
+            colorBarEdgeOpacity: parseFloat(document.getElementById('f_colorBarEdgeOpacity').value),
+            colorBarInnerStopPct: parseFloat(document.getElementById('f_colorBarInnerStopPct').value),
+            colorBarInnerOpacity: parseFloat(document.getElementById('f_colorBarInnerOpacity').value),
+            waveformTransitionSeconds: parseFloat(document.getElementById('f_waveformTransitionSeconds').value),
+            waveformDisplayDelaySeconds: parseFloat(document.getElementById('f_waveformDisplayDelaySeconds').value),
+            waveformTimeOffsetSeconds: parseFloat(document.getElementById('f_waveformTimeOffsetSeconds').value)
+        };
+        await apiPost('/api/config/lookfeel', body);
+        hideBanner('globalBanner');
+        return 'Saved — restart Roon Server to see it on the TV.';
+    }
+
+    // Populated from data.lookAndFeelDefaults (server response, itself
+    // read from display-defaults.json) inside populate() below -- no
+    // longer a hardcoded copy here. This is the single reference both
+    // this panel and admin.js's own field table now read from, instead
+    // of each keeping a separate copy that could drift apart.
+    // Set from data.displayUiConfigured on every populate() -- Look and
+    // Feel/Data Sources/Logs all live INSIDE display_ui.html itself, so
+    // they can't be saved at all until ROON_DISPLAY_UI_PATH points at a
+    // real file. Read by the three collectAndSave* functions below so
+    // saveAllSections() can skip them cleanly instead of surfacing a
+    // server-side "ROON_DISPLAY_UI_PATH is not set" error on every save.
+    let displayUiConfigured = false;
+    let lookAndFeelDefaults = {};
+    let lookAndFeelResetButtonsAdded = false;
+    let dataSourcesDefaults = {};
+    let dataSourcesResetButtonsAdded = false;
+    let logsDefaults = {};
+    let logsResetButtonsAdded = false;
+
+    // Only fills the form -- does NOT save by itself. Nothing on disk
+    // changes until Save is clicked afterward, same as any other edit
+    // here, so this is safe to click freely to preview/compare.
+    document.getElementById('restoreLookFeelDefaults').addEventListener('click', function () {
+        if (!window.confirm('This fills every field on this tab with the original default values. Nothing is saved until you click Save afterward. Continue?')) return;
+        Object.keys(lookAndFeelDefaults).forEach(function (key) {
+            const el = document.getElementById('f_' + key);
+            if (el) el.value = lookAndFeelDefaults[key];
+        });
+        renderWaveformPreview();
+        setStatus('lookfeelStatus', 'Defaults loaded -- click Save to apply them.', '');
+    });
+
+    // Reads every field's CURRENTLY ACTIVE value from display_ui.html
+    // (same as the per-field save-as-default button, just for all 37 at
+    // once) and overwrites display-defaults.json's defaults with them.
+    // Reloads afterward so lookAndFeelDefaults (and every ↺/💾 button's
+    // closure over it) reflects the change immediately.
+    document.getElementById('saveAllAsDefaults').addEventListener('click', async function () {
+        if (!window.confirm('Save every field\'s current active value on this tab as its new default? This cannot be undone.')) return;
+        setStatus('lookfeelStatus', 'Saving...', '');
+        try {
+            await apiPost('/api/config/save-all-defaults', { category: 'lookAndFeel' });
+            setStatus('lookfeelStatus', 'All defaults updated.', 'ok');
+            await loadAll();
+        } catch (err) {
+            setStatus('lookfeelStatus', 'Error: ' + err.message, 'err');
+        }
+    });
+
+    // Generic versions of the two Look and Feel handlers above, for Data
+    // Sources and Logs. getDefaultsMap is a function (not the map itself)
+    // deliberately -- populate() REASSIGNS dataSourcesDefaults/
+    // logsDefaults to a new object on every load rather than mutating the
+    // existing one in place, so a plain reference captured once at bind
+    // time (page load) would go stale after the first reload; calling the
+    // getter at click time always reads whatever the variable currently
+    // points to.
+    function bindRestoreDefaultsButton(buttonId, getDefaultsMap, statusId) {
+        document.getElementById(buttonId).addEventListener('click', function () {
+            if (!window.confirm('This fills every field on this tab with the original default values. Nothing is saved until you click Save afterward. Continue?')) return;
+            const defaultsMap = getDefaultsMap();
+            Object.keys(defaultsMap).forEach(function (key) {
+                const el = document.getElementById('f_' + key);
+                if (el) el.value = defaultsMap[key];
+            });
+            setStatus(statusId, 'Defaults loaded -- click Save to apply them.', '');
+        });
+    }
+
+    function bindSaveAllAsDefaultsButton(buttonId, category, statusId) {
+        document.getElementById(buttonId).addEventListener('click', async function () {
+            if (!window.confirm('Save every field\'s current active value on this tab as its new default? This cannot be undone.')) return;
+            setStatus(statusId, 'Saving...', '');
+            try {
+                await apiPost('/api/config/save-all-defaults', { category: category });
+                setStatus(statusId, 'All defaults updated.', 'ok');
+                await loadAll();
+            } catch (err) {
+                setStatus(statusId, 'Error: ' + err.message, 'err');
+            }
+        });
+    }
+
+    bindRestoreDefaultsButton('restoreDataSourcesDefaults', function () { return dataSourcesDefaults; }, 'datasourcesStatus');
+    bindSaveAllAsDefaultsButton('saveAllAsDefaultsDataSources', 'dataSources', 'datasourcesStatus');
+    bindRestoreDefaultsButton('restoreLogsDefaults', function () { return logsDefaults; }, 'logsStatus');
+    bindSaveAllAsDefaultsButton('saveAllAsDefaultsLogs', 'logs', 'logsStatus');
+
+    // Adds a small per-field "reset to default" button next to every Look
+    // and Feel input -- generated from lookAndFeelDefaults (populated from
+    // the server's response, itself read from display-defaults.json)
+    // rather than hand-added to each field's HTML, so it can't drift out
+    // of sync if a field is ever added/removed there. Called once from
+    // populate() below, after the first successful data load -- not at
+    // page-setup time anymore, since the defaults it needs now arrive
+    // asynchronously. Guarded there so it never runs twice (would
+    // otherwise pile up duplicate buttons on every reload).
+    function addPerFieldResetButtons(defaultsMap, statusId) {
+        Object.keys(defaultsMap).forEach(function (key) {
+            const input = document.getElementById('f_' + key);
+            if (!input) return;
+            // accentColor/dimmingOverlayColor: the value element to move is
+            // the whole .colorRow (text field + color picker together), not
+            // just the text input -- otherwise the picker would end up
+            // stranded outside the new wrapper.
+            const valueEl = input.closest('.colorRow') || input;
+            const fieldDiv = valueEl.parentElement;
+            if (!fieldDiv || !fieldDiv.classList.contains('field')) return;
+
+            const wrap = document.createElement('div');
+            wrap.className = 'fieldValueWrap';
+            fieldDiv.insertBefore(wrap, valueEl);
+            wrap.appendChild(valueEl);
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'fieldResetBtn';
+            btn.textContent = '\u21BA';
+            btn.title = 'Reset this field to its default value';
+            btn.addEventListener('click', function () {
+                // Reads defaultsMap[key] fresh at click time (not copied
+                // into the closure), so this always uses whatever the most
+                // recent server response said, not a stale value from
+                // whenever the button was first created.
+                input.value = defaultsMap[key];
+                // Keep a color field's picker in sync too -- setting the
+                // text input's .value directly doesn't fire its own
+                // 'change' listener, so the picker would otherwise show a
+                // stale swatch until the next full page load.
+                const picker = document.getElementById(input.id + 'Picker');
+                if (picker) picker.value = rgbStringToHex(input.value);
+                // Harmless no-op redraw when called for a Data
+                // Sources/Logs field -- the canvas lives on the Look and
+                // Feel tab regardless of which tab is visually active, and
+                // redrawing it from whatever its own (untouched) inputs
+                // currently hold costs nothing and never errors.
+                renderWaveformPreview();
+            });
+            wrap.appendChild(btn);
+
+            // Deliberately sends only { key } -- the server reads the
+            // CURRENTLY ACTIVE value straight out of display_ui.html
+            // itself, never whatever this input happens to hold at click
+            // time (which might not even be saved yet). See
+            // /api/config/save-default's own comment.
+            const saveDefaultBtn = document.createElement('button');
+            saveDefaultBtn.type = 'button';
+            saveDefaultBtn.className = 'fieldResetBtn';
+            saveDefaultBtn.textContent = '\uD83D\uDCBE';
+            saveDefaultBtn.title = "Save this field's current active value as its new default";
+            saveDefaultBtn.addEventListener('click', async function () {
+                if (!window.confirm('Save the current active value of "' + key + '" as its new default? This cannot be undone.')) return;
+                try {
+                    const result = await apiPost('/api/config/save-default', { key: key });
+                    defaultsMap[key] = result.newDefault;
+                    setStatus(statusId, 'Saved new default for ' + key + ' (' + result.newDefault + ').', 'ok');
+                } catch (err) {
+                    setStatus(statusId, 'Error: ' + err.message, 'err');
+                }
+            });
+            wrap.appendChild(saveDefaultBtn);
+        });
+    }
+
+    // ---- Save: Data Sources ---------------------------------------------------
+    async function collectAndSaveDataSources() {
+        if (!displayUiConfigured) return 'Not configured -- skipped (set ROON_DISPLAY_UI_PATH first).';
+        const body = {
+            sourceOrder: document.getElementById('sourceOrderList')._items,
+            debug: document.getElementById('f_debug').checked,
+            minArtistSimilarity: parseFloat(document.getElementById('f_minArtistSimilarity').value),
+            minTitleSimilarity: parseFloat(document.getElementById('f_minTitleSimilarity').value)
+        };
+        await apiPost('/api/config/datasources', body);
+        hideBanner('globalBanner');
+        return 'Saved — restart Roon Server to see it on the TV.';
+    }
+
+    // ---- Save: Logs ---------------------------------------------------------
+    async function collectAndSaveLogs() {
+        if (!displayUiConfigured) return 'Not configured -- skipped (set ROON_DISPLAY_UI_PATH first).';
+        const body = {
+            logsToTerminal: document.getElementById('f_logsToTerminal').checked,
+            logsToScreen: document.getElementById('f_logsToScreen').checked
+        };
+        await apiPost('/api/config/logs', body);
+        hideBanner('globalBanner');
+        return 'Saved — restart Roon Server to see it on the TV.';
+    }
+
+    // ---- Save: API Keys ---------------------------------------------------------
+    async function collectAndSaveApiKeys() {
+        const body = {};
+        ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'DISCOGS_TOKEN'].forEach(function (key) {
+            const val = document.getElementById('f_' + key).value;
+            if (val) body[key] = val; // blank = "leave unchanged", per the hint text in the form
+        });
+        if (Object.keys(body).length === 0) return 'Nothing to save.';
+        await apiPost('/api/config/env', body);
+        // Secret fields are cleared (not repopulated) even after a
+        // successful save -- the server never sends real values back,
+        // only fresh masked placeholders.
+        document.getElementById('f_ANTHROPIC_API_KEY').value = '';
+        document.getElementById('f_OPENAI_API_KEY').value = '';
+        document.getElementById('f_DISCOGS_TOKEN').value = '';
+        return 'Saved — restart the proxy for it to take effect.';
+    }
+
+    // Each "Clear" button is its own immediate action (not bundled into
+    // the Save button above) -- clearing a key is destructive enough to
+    // deserve its own explicit confirmation rather than happening
+    // silently as a side effect of an unrelated save.
+    document.querySelectorAll('[data-clear-key]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            const key = btn.dataset.clearKey;
+            if (!window.confirm('Clear this key? This cannot be undone.')) return;
+            setStatus('apiKeysStatus', 'Clearing...', '');
+            try {
+                await apiPost('/api/config/env', { clear: [key] });
+                setStatus('apiKeysStatus', 'Cleared — restart the proxy for it to take effect.', 'ok');
+                document.getElementById('f_' + key).value = '';
+                await loadAll();
+            } catch (err) {
+                setStatus('apiKeysStatus', 'Error: ' + err.message, 'err');
+            }
+        });
+    });
+
+    // Tests whatever is currently SAVED (.env on the proxy), not anything
+    // typed in the field above -- that field is always blank (see
+    // maskSecret), there's nothing there to test. Disabled state for each
+    // button is set from data.env[key] in populate() above.
+    document.querySelectorAll('[data-test-key]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            const provider = btn.dataset.testKey;
+            const statusId = 'testKeyStatus_' + provider;
+            setStatus(statusId, 'Testing...', '');
+            btn.disabled = true;
+            try {
+                const result = await apiPost('/api/config/test/' + provider, {});
+                setStatus(statusId, result.ok ? ('\u2713 ' + result.message) : ('\u2717 ' + result.error), result.ok ? 'ok' : 'err');
+            } catch (err) {
+                setStatus(statusId, '\u2717 ' + err.message, 'err');
+            }
+            btn.disabled = false;
+        });
+    });
+
+    // ---- Save: Network ------------------------------------------------------------
+    async function collectAndSaveNetwork() {
+        const body = {};
+        ['PROXY_HOST', 'PORT', 'ALLOWED_ORIGIN', 'ROON_DISPLAY_UI_PATH'].forEach(function (key) {
+            const val = document.getElementById('f_' + key).value;
+            if (val) body[key] = val;
+        });
+        if (Object.keys(body).length === 0) return 'Nothing to save.';
+        const result = await apiPost('/api/config/env', body);
+        let msg = 'Saved — restart the proxy for it to take effect.';
+        if (Object.prototype.hasOwnProperty.call(body, 'PROXY_HOST') || Object.prototype.hasOwnProperty.call(body, 'PORT')) {
+            msg += result.displayUiSynced ? ' display_ui.html\u2019s proxy URL was updated too.' : ' (display_ui.html was NOT updated -- set ROON_DISPLAY_UI_PATH first.)';
+        }
+        return msg;
+    }
+
+    // ---- Save: AI config --------------------------------------------------------
+    // ---- Key normalization table --------------------------------------------
+    // One <tr> per rule, built fresh each time rather than templated in the
+    // HTML (an unknown, user-controlled number of rows). Reads back into
+    // the same {symbols, containsAny, lastOccurrenceOnly, appliesToAlbum,
+    // appliesToTrack} shape ai.js's own rule objects use, so the body sent
+    // to /api/config/aiconfig needs no translation.
+    function createKeyNormRow(rule) {
+        rule = rule || { symbols: [], containsAny: [], lastOccurrenceOnly: false, appliesToAlbum: false, appliesToTrack: false };
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+            '<td style="padding: 4px 6px;"><textarea class="knSymbols" rows="2" style="width: 100%;" placeholder="-"></textarea></td>' +
+            '<td style="padding: 4px 6px;"><textarea class="knContains" rows="2" style="width: 100%;" placeholder="(any)"></textarea></td>' +
+            '<td style="padding: 4px 6px; text-align: center;"><input type="checkbox" class="knLastOccurrence" style="width: auto;"></td>' +
+            '<td style="padding: 4px 6px; text-align: center;"><input type="checkbox" class="knAppliesAlbum" style="width: auto;"></td>' +
+            '<td style="padding: 4px 6px; text-align: center;"><input type="checkbox" class="knAppliesTrack" style="width: auto;"></td>' +
+            '<td style="padding: 4px 6px;"><button type="button" class="fieldResetBtn knRemoveRow" title="Remove this row">\u2715</button></td>';
+        tr.querySelector('.knSymbols').value = (rule.symbols || []).join('\n');
+        tr.querySelector('.knContains').value = (rule.containsAny || []).join('\n');
+        tr.querySelector('.knLastOccurrence').checked = !!rule.lastOccurrenceOnly;
+        tr.querySelector('.knAppliesAlbum').checked = !!rule.appliesToAlbum;
+        tr.querySelector('.knAppliesTrack').checked = !!rule.appliesToTrack;
+        tr.querySelector('.knRemoveRow').addEventListener('click', function () { tr.remove(); });
+        return tr;
+    }
+
+    function renderKeyNormTable(rules) {
+        const tbody = document.getElementById('keyNormTableBody');
+        tbody.innerHTML = '';
+        (rules || []).forEach(function (rule) {
+            tbody.appendChild(createKeyNormRow(rule));
+        });
+    }
+
+    // Skips a row with no symbols at all -- nothing meaningful to save,
+    // and an empty symbols array would never match anything anyway.
+    function readKeyNormTable() {
+        const rules = [];
+        document.querySelectorAll('#keyNormTableBody tr').forEach(function (tr) {
+            const symbols = tr.querySelector('.knSymbols').value.split('\n').map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
+            if (symbols.length === 0) return;
+            const containsAny = tr.querySelector('.knContains').value.split('\n').map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
+            rules.push({
+                symbols: symbols,
+                containsAny: containsAny,
+                lastOccurrenceOnly: tr.querySelector('.knLastOccurrence').checked,
+                appliesToAlbum: tr.querySelector('.knAppliesAlbum').checked,
+                appliesToTrack: tr.querySelector('.knAppliesTrack').checked
+            });
+        });
+        return rules;
+    }
+
+    document.getElementById('addKeyNormRow').addEventListener('click', function () {
+        document.getElementById('keyNormTableBody').appendChild(createKeyNormRow());
+    });
+
+    async function collectAndSaveAiConfig() {
+        const providerOrder = document.getElementById('providerOrderList')._items;
+        const body = {
+            aiLanguage: document.getElementById('f_aiLanguage').value,
+            textLengthWords: parseInt(document.getElementById('f_textLengthWords').value, 10),
+            providerOrder: providerOrder,
+            models: {
+                claude: document.getElementById('f_modelClaude').value,
+                chatgpt: document.getElementById('f_modelChatgpt').value
+            },
+            reasoningEffort: {
+                chatgpt: document.getElementById('f_reasoningEffort').value
+            },
+            stylePrompts: {
+                album: document.getElementById('f_styleAlbum').value,
+                composition: document.getElementById('f_styleComposition').value,
+                artist: document.getElementById('f_styleArtist').value
+            },
+            webSearch: {
+                mode: document.getElementById('f_webSearchMode').value,
+                maxUses: parseInt(document.getElementById('f_webSearchMaxUses').value, 10),
+                useDomainFilter: document.getElementById('f_useDomainFilter').checked,
+                preferredDomains: document.getElementById('f_preferredDomains').value
+                    .split('\n')
+                    .map(function (d) { return d.trim(); })
+                    .filter(function (d) { return d.length > 0; }),
+                fallbackIfEmpty: document.getElementById('f_fallbackIfEmpty').checked
+            },
+            disambiguation: {
+                artist: document.getElementById('f_disambiguationArtist').checked,
+                album: document.getElementById('f_disambiguationAlbum').checked,
+                composition: document.getElementById('f_disambiguationComposition').checked
+            },
+            keyNormalizationRules: readKeyNormTable()
+        };
+        await apiPost('/api/config/aiconfig', body);
+        return 'Saved — restart the proxy for it to take effect.';
+    }
+
+    // ---- Restart proxy ------------------------------------------------------------
+    // Called only from saveAllSections() below, once every section has
+    // saved successfully. statusElId is kept as a parameter (rather than
+    // hardcoded) purely so the polling status text has somewhere to go.
+    async function restartProxy(statusElId) {
+        setStatus(statusElId, 'Restarting...', '');
+        try {
+            await apiPost('/api/config/restart-proxy', {});
+        } catch (err) {
+            // A failed fetch here is actually the EXPECTED happy path once
+            // the process exits mid-response -- don't treat it as an error.
+        }
+        let attempts = 0;
+        const poll = setInterval(async function () {
+            attempts++;
+            try {
+                await apiGet('/api/config');
+                clearInterval(poll);
+                setStatus(statusElId, 'Back up.', 'ok');
+                await loadAll();
+            } catch (err) {
+                if (attempts > 20) {
+                    clearInterval(poll);
+                    setStatus(statusElId, 'Still not responding after 20s -- check proxy.log by hand.', 'err');
+                } else {
+                    setStatus(statusElId, 'Restarting... (' + attempts + ')', '');
+                }
+            }
+        }, 1000);
+    }
+
+    // ---- Save & Restart Server (header) ----------------------------------------
+    // Replaces the old per-tab "Save" buttons -- one click saves every
+    // section (Look and Feel, Data Sources, API Keys, AI Config, Network;
+    // NOT the admin password, which stays its own explicit action since
+    // changing it logs you out immediately) and, only if every section
+    // saved without error, restarts the proxy. If any section fails, the
+    // others are still saved (each is independent), but the restart is
+    // skipped -- restarting with a half-saved config is worse than leaving
+    // the proxy running on the old one while you fix the failing field.
+    const saveSections = [
+        { label: 'Look and Feel', fn: collectAndSaveLookFeel, statusId: 'lookfeelStatus' },
+        { label: 'Data Sources', fn: collectAndSaveDataSources, statusId: 'datasourcesStatus' },
+        { label: 'API Keys', fn: collectAndSaveApiKeys, statusId: 'apiKeysStatus' },
+        { label: 'AI Config', fn: collectAndSaveAiConfig, statusId: 'aiConfigStatus' },
+        { label: 'Network', fn: collectAndSaveNetwork, statusId: 'networkStatus' },
+        { label: 'Logs', fn: collectAndSaveLogs, statusId: 'logsStatus' }
+    ];
+
+    async function saveAllSections() {
+        setStatus('headerRestartStatus', 'Saving...', '');
+        const failures = [];
+        for (const section of saveSections) {
+            setStatus(section.statusId, 'Saving...', '');
+            try {
+                const msg = await section.fn();
+                const neutral = msg === 'Nothing to save.' || msg.indexOf('skipped') !== -1;
+                setStatus(section.statusId, msg, neutral ? '' : 'ok');
+            } catch (err) {
+                failures.push(section.label);
+                if (err.permissionIssue) showPermissionError(section.statusId, err);
+                else setStatus(section.statusId, 'Error: ' + err.message, 'err');
+            }
+        }
+        if (failures.length > 0) {
+            setStatus('headerRestartStatus', failures.join(', ') + ' failed to save -- restart skipped. Fix the error' + (failures.length > 1 ? 's' : '') + ' above and try again.', 'err');
+            return;
+        }
+        await restartProxy('headerRestartStatus');
+    }
+
+    document.getElementById('headerSaveRestartBtn').addEventListener('click', function () {
+        saveAllSections();
+    });
+
+    // ---- Export ---------------------------------------------------------------
+    // Deliberately excludes API keys and ADMIN_PASSWORD -- current.env only
+    // ever holds masked values anyway (the real ones never reach the
+    // browser), so there'd be nothing usable to export even if included.
+    document.getElementById('exportConfig').addEventListener('click', function () {
+        if (!current) return;
+        const payload = {
+            exportedAt: new Date().toISOString(),
+            aiConfig: current.aiConfig,
+            lookAndFeel: current.lookAndFeel || null,
+            dataSources: current.dataSources || null,
+            env: {
+                PROXY_HOST: current.env.PROXY_HOST,
+                PORT: current.env.PORT,
+                ALLOWED_ORIGIN: current.env.ALLOWED_ORIGIN,
+                ROON_DISPLAY_UI_PATH: current.env.ROON_DISPLAY_UI_PATH
+            }
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'roon-display-config-' + payload.exportedAt.slice(0, 10) + '.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    });
+
+    // ---- Import -----------------------------------------------------------------
+    let pendingImport = null;
+
+    document.getElementById('f_importFile').addEventListener('change', function () {
+        const file = this.files[0];
+        pendingImport = null;
+        document.getElementById('applyImport').disabled = true;
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function () {
+            try {
+                const parsed = JSON.parse(reader.result);
+                const sections = ['aiConfig', 'lookAndFeel', 'dataSources', 'env'].filter(function (k) { return parsed[k]; });
+                if (sections.length === 0) {
+                    setStatus('importStatus', 'File has none of the expected sections (aiConfig/lookAndFeel/dataSources/env).', 'err');
+                    return;
+                }
+                pendingImport = parsed;
+                document.getElementById('applyImport').disabled = false;
+                setStatus('importStatus', 'Loaded: ' + sections.join(', ') + (parsed.exportedAt ? ' (exported ' + parsed.exportedAt.slice(0, 10) + ')' : '') + '. Click Apply to import.', '');
+            } catch (err) {
+                setStatus('importStatus', 'Not valid JSON: ' + err.message, 'err');
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    document.getElementById('applyImport').addEventListener('click', async function () {
+        if (!pendingImport) return;
+        if (!window.confirm('This will overwrite the corresponding settings on this proxy. Continue?')) return;
+        const results = [];
+        let permissionErr = null; // last permission-flavored failure seen, shown after the summary
+        if (pendingImport.aiConfig) {
+            try {
+                await apiPost('/api/config/aiconfig', pendingImport.aiConfig);
+                results.push('AI config: OK');
+            } catch (err) {
+                results.push('AI config: FAILED (' + err.message + ')');
+            }
+        }
+        if (pendingImport.lookAndFeel) {
+            try {
+                await apiPost('/api/config/lookfeel', pendingImport.lookAndFeel);
+                results.push('Look and Feel: OK');
+            } catch (err) {
+                results.push('Look and Feel: FAILED (' + err.message + ')');
+                if (err.permissionIssue) permissionErr = err;
+            }
+        }
+        if (pendingImport.dataSources) {
+            try {
+                await apiPost('/api/config/datasources', pendingImport.dataSources);
+                results.push('Data Sources: OK');
+            } catch (err) {
+                results.push('Data Sources: FAILED (' + err.message + ')');
+                if (err.permissionIssue) permissionErr = err;
+            }
+        }
+        if (pendingImport.env) {
+            const envBody = {};
+            ['PROXY_HOST', 'PORT', 'ALLOWED_ORIGIN', 'ROON_DISPLAY_UI_PATH'].forEach(function (key) {
+                if (pendingImport.env[key]) envBody[key] = pendingImport.env[key];
+            });
+            if (Object.keys(envBody).length) {
+                try {
+                    await apiPost('/api/config/env', envBody);
+                    results.push('Network settings: OK');
+                } catch (err) {
+                    results.push('Network settings: FAILED (' + err.message + ')');
+                }
+            }
+        }
+        const anyFailed = results.some(function (r) { return r.indexOf('FAILED') !== -1; });
+        if (permissionErr) {
+            setStatus('importStatus', results.join(' / ') + ' — macOS permissions issue, see the notice above.', 'err');
+            const banner = document.getElementById('globalBanner');
+            const steps = (permissionErr.instructions || []).map(function (s) { return '<li>' + s.replace(permissionErr.nodePath, '<code>' + permissionErr.nodePath + '</code>') + '</li>'; }).join('');
+            banner.innerHTML = '<strong>macOS is blocking this write to display_ui.html (Full Disk Access needed).</strong>' +
+                '<ol style="margin: 8px 0 4px 20px; padding: 0;">' + steps + '</ol>';
+            banner.className = 'banner visible warn';
+        } else {
+            setStatus('importStatus', results.join(' / ') + ' -- restart the proxy (and Roon Server, if Look and Feel/Data Sources were included) to apply.', anyFailed ? 'err' : 'ok');
+        }
+        pendingImport = null;
+        document.getElementById('applyImport').disabled = true;
+        document.getElementById('f_importFile').value = '';
+        await loadAll();
+    });
+
+    // ---- AI Cache -----------------------------------------------------------
+    document.getElementById('f_cacheDateMode').addEventListener('change', function () {
+        const mode = this.value;
+        document.getElementById('cacheDateOnField').style.display = mode === 'on' ? '' : 'none';
+        document.getElementById('cacheDateBeforeField').style.display = mode === 'before' ? '' : 'none';
+        document.getElementById('cacheDateRangeField').style.display = mode === 'range' ? '' : 'none';
+    });
+
+    function readCacheDateFilter() {
+        const mode = document.getElementById('f_cacheDateMode').value;
+        if (mode === 'on') return { mode: 'on', date: document.getElementById('f_cacheDateOn').value };
+        if (mode === 'before') return { mode: 'before', date: document.getElementById('f_cacheDateBefore').value };
+        if (mode === 'range') {
+            return {
+                mode: 'range',
+                startDate: document.getElementById('f_cacheDateRangeStart').value,
+                endDate: document.getElementById('f_cacheDateRangeEnd').value
+            };
+        }
+        return { mode: 'any' };
+    }
+
+    // One shared handler for all four Clear buttons -- kind is the
+    // internal value the cache entries themselves are stamped with
+    // (KIND_INFO in ai.js: 'review' for album, not 'album' -- the button
+    // label and the internal kind name deliberately differ here), label
+    // is just for the confirm/status text.
+    function bindClearCacheButton(buttonId, kind, label) {
+        document.getElementById(buttonId).addEventListener('click', async function () {
+            const filter = readCacheDateFilter();
+            if ((filter.mode === 'on' || filter.mode === 'before') && !filter.date) {
+                setStatus('clearAiCacheStatus', 'Pick a date first.', 'err');
+                return;
+            }
+            if (filter.mode === 'range' && (!filter.startDate || !filter.endDate)) {
+                setStatus('clearAiCacheStatus', 'Pick both dates first.', 'err');
+                return;
+            }
+            const scopeDesc = kind === 'all' ? 'every kind' : label;
+            if (!window.confirm('This deletes cached AI responses (' + scopeDesc + ', ' + filter.mode + ') matching the date filter above. Cannot be undone. Continue?')) return;
+            setStatus('clearAiCacheStatus', 'Clearing...', '');
+            try {
+                const result = await apiPost('/api/config/clear-ai-cache', { kind: kind, dateFilter: filter });
+                const n = result.deleted || 0;
+                setStatus('clearAiCacheStatus', 'Cleared ' + n + ' ' + (n === 1 ? 'entry' : 'entries') + '.', 'ok');
+                await loadAll();
+            } catch (err) {
+                setStatus('clearAiCacheStatus', 'Error: ' + err.message, 'err');
+            }
+        });
+    }
+    bindClearCacheButton('clearAiCache', 'all', 'all kinds');
+    bindClearCacheButton('clearArtistCache', 'artist', 'artist');
+    bindClearCacheButton('clearAlbumCache', 'review', 'album');
+    bindClearCacheButton('clearCompositionCache', 'composition', 'composition');
+
+    document.getElementById('exportAiCache').addEventListener('click', async function () {
+        try {
+            const data = await apiGet('/api/config/export-ai-cache');
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'roon-display-ai-cache-' + data.exportedAt.slice(0, 10) + '.json';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            setStatus('clearAiCacheStatus', 'Export error: ' + err.message, 'err');
+        }
+    });
+
+    let pendingImportCache = null;
+
+    document.getElementById('f_importCacheFile').addEventListener('change', function () {
+        const file = this.files[0];
+        pendingImportCache = null;
+        document.getElementById('applyImportCache').disabled = true;
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function () {
+            try {
+                const parsed = JSON.parse(reader.result);
+                if (!parsed.entries || typeof parsed.entries !== 'object' || Array.isArray(parsed.entries)) {
+                    setStatus('importCacheStatus', 'File does not have the expected "entries" section (exported from this same section?).', 'err');
+                    return;
+                }
+                const entryCount = Object.keys(parsed.entries).length;
+                pendingImportCache = parsed.entries;
+                document.getElementById('applyImportCache').disabled = false;
+                setStatus('importCacheStatus', 'Loaded: ' + entryCount + ' entries' + (parsed.exportedAt ? ' (exported ' + parsed.exportedAt.slice(0, 10) + ')' : '') + '. Click Apply to import.', '');
+            } catch (err) {
+                setStatus('importCacheStatus', 'Not valid JSON: ' + err.message, 'err');
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    document.getElementById('applyImportCache').addEventListener('click', async function () {
+        if (!pendingImportCache) return;
+        setStatus('importCacheStatus', 'Importing...', '');
+        try {
+            const result = await apiPost('/api/config/import-ai-cache', { entries: pendingImportCache });
+            setStatus('importCacheStatus', 'Merged ' + result.merged + ' entries -- ' + result.total + ' total cached now.', 'ok');
+            pendingImportCache = null;
+            document.getElementById('applyImportCache').disabled = true;
+            document.getElementById('f_importCacheFile').value = '';
+            await loadAll();
+        } catch (err) {
+            setStatus('importCacheStatus', 'Error: ' + err.message, 'err');
+        }
+    });
+
+    // ---- Auth screens -------------------------------------------------------
+    function showLoginScreen(noticeText) {
+        authHeader = null;
+        document.getElementById('headerActions').style.display = 'none';
+        document.getElementById('forcePasswordScreen').style.display = 'none';
+        document.getElementById('mainNav').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'flex';
+        document.getElementById('loginError').style.display = 'none';
+        document.getElementById('loginPassword').value = '';
+        document.getElementById('forgotPasswordPanel').style.display = 'none';
+        const notice = document.getElementById('loginNotice');
+        if (noticeText) {
+            notice.textContent = noticeText;
+            notice.style.display = 'block';
+        } else {
+            notice.style.display = 'none';
+        }
+        document.getElementById('loginPassword').focus();
+    }
+
+    function showForcePasswordScreen() {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('forcePasswordScreen').style.display = 'flex';
+        document.getElementById('forceNewSecret').value = '';
+        document.getElementById('forceConfirmSecret').value = '';
+        document.getElementById('forceChangeError').style.display = 'none';
+        document.getElementById('forceNewSecret').focus();
+    }
+
+    function showMainApp() {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('forcePasswordScreen').style.display = 'none';
+        document.getElementById('mainNav').style.display = 'flex';
+        document.getElementById('mainContent').style.display = 'block';
+        document.getElementById('headerActions').style.display = 'flex';
+        loadAll();
+    }
+
+    // Polls the always-public /config route (no auth needed) until it
+    // responds -- used after a restart to know when the proxy is back,
+    // without needing any credentials to check.
+    async function waitForProxyBack() {
+        let attempts = 0;
+        return new Promise(function (resolve) {
+            const poll = setInterval(async function () {
+                attempts++;
+                try {
+                    await fetch('/config');
+                    clearInterval(poll);
+                    resolve(true);
+                } catch (err) {
+                    if (attempts > 20) { clearInterval(poll); resolve(false); }
+                }
+            }, 1000);
+        });
+    }
+
+    function validateNewPassword(newPassword, confirmPassword) {
+        if (!newPassword) return 'Password cannot be empty.';
+        if (newPassword !== confirmPassword) return 'Passwords do not match.';
+        if (newPassword === 'admin') return '"admin" cannot be used as the password -- it\'s the reset sentinel value.';
+        return null;
+    }
+
+    // Shared by the forced first-login change and the voluntary one in the
+    // Network & Maintenance tab. Always ends the session and returns to
+    // the login screen -- the proxy restart this triggers is what actually
+    // makes the new password take effect, so staying "logged in" with the
+    // old in-memory authHeader afterward would be misleading.
+    async function submitPasswordChange(newPassword, confirmPassword, statusElId, errorElId) {
+        const validationError = validateNewPassword(newPassword, confirmPassword);
+        if (validationError) {
+            if (errorElId) {
+                const el = document.getElementById(errorElId);
+                el.textContent = validationError;
+                el.style.display = 'block';
+            } else {
+                setStatus(statusElId, validationError, 'err');
+            }
+            return;
+        }
+        if (errorElId) document.getElementById(errorElId).style.display = 'none';
+        setStatus(statusElId, 'Saving...', '');
+        try {
+            await apiPost('/api/config/env', { ADMIN_PASSWORD: newPassword });
+        } catch (err) {
+            setStatus(statusElId, 'Error: ' + err.message, 'err');
+            return;
+        }
+        setStatus(statusElId, 'Password changed — restarting proxy so it takes effect...', 'ok');
+        try {
+            await apiPost('/api/config/restart-proxy', {});
+        } catch (err) {
+            // Expected: the process exits mid-response.
+        }
+        await waitForProxyBack();
+        showLoginScreen('Password changed. Log in with your new password.');
+    }
+
+    // ---- Login ----------------------------------------------------------------
+    async function attemptLogin() {
+        const password = document.getElementById('loginPassword').value;
+        document.getElementById('loginError').style.display = 'none';
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: password })
+            });
+            const data = await res.json().catch(function () { return {}; });
+            if (!res.ok || !data.ok) {
+                const el = document.getElementById('loginError');
+                el.textContent = 'Incorrect password.';
+                el.style.display = 'block';
+                return;
+            }
+            authHeader = 'Basic ' + btoa('admin:' + password); // username is ignored server-side, "admin" here is just a placeholder
+            if (data.mustChangePassword) {
+                showForcePasswordScreen();
+            } else {
+                showMainApp();
+            }
+        } catch (err) {
+            const el = document.getElementById('loginError');
+            el.textContent = 'Could not reach the proxy: ' + err.message;
+            el.style.display = 'block';
+        }
+    }
+
+    // A real 'submit' event (not a button click + manual Enter-key
+    // listener) is what gives Safari a genuine moment to anchor its
+    // save-password prompt to -- see the comment by #loginPassword in the
+    // HTML. preventDefault() stops the browser's own navigation/reload
+    // that a form submit would otherwise trigger; attemptLogin() still
+    // does all the actual work exactly as before.
+    document.getElementById('loginForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        attemptLogin();
+    });
+
+    // Purely client-side -- there's no server-side session to invalidate
+    // (every request carries its own Authorization header, see apiGet/
+    // apiPost), so this just forgets the in-memory authHeader and shows
+    // the login screen again, with the password field freshly cleared.
+    // Purely client-side -- there's no server-side session to invalidate
+    // (every request carries its own Authorization header, see apiGet/
+    // apiPost), so this just forgets the in-memory authHeader and shows
+    // the login screen again, with the password field freshly cleared.
+    // Deliberately NOT a page reload -- that was tried and made things
+    // worse, since a reload is itself a "leaving a page that had a
+    // password field with a value" event to Safari, triggering its own
+    // save-password nag on top of (not instead of) the one at window close.
+    document.getElementById('logoutBtn').addEventListener('click', function () {
+        showLoginScreen();
+    });
+
+    document.getElementById('forgotPasswordLink').addEventListener('click', function (e) {
+        e.preventDefault();
+        const panel = document.getElementById('forgotPasswordPanel');
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    });
+
+    document.getElementById('confirmReset').addEventListener('click', async function () {
+        if (!window.confirm('This clears all API keys and resets the password to "admin". This cannot be undone. Continue?')) return;
+        setStatus('resetStatus', 'Resetting...', '');
+        try {
+            const res = await fetch('/api/config/reset-access', { method: 'POST' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+        } catch (err) {
+            // Also expected here: the process exits mid-response.
+        }
+        setStatus('resetStatus', 'Restarting...', '');
+        await waitForProxyBack();
+        document.getElementById('forgotPasswordPanel').style.display = 'none';
+        showLoginScreen('Access was reset. Log in with "admin" — you\'ll be asked to set a new password right away.');
+    });
+
+    document.getElementById('forceChangeSubmit').addEventListener('click', function () {
+        submitPasswordChange(
+            document.getElementById('forceNewSecret').value,
+            document.getElementById('forceConfirmSecret').value,
+            'forceChangeStatus',
+            'forceChangeError'
+        );
+    });
+
+    document.getElementById('netChangePassword').addEventListener('click', function () {
+        submitPasswordChange(
+            document.getElementById('netNewSecret').value,
+            document.getElementById('netConfirmSecret').value,
+            'netPasswordStatus',
+            'netPasswordError'
+        );
+    });
+
+    showLoginScreen();
+
+    } catch (setupErr) {
+        console.error('[admin] setup error:', setupErr);
+        var banner = document.getElementById('globalBanner');
+        if (banner) {
+            banner.textContent = 'Page setup failed: ' + setupErr.message + ' -- check Safari\u2019s Web Inspector Console for the full stack trace.';
+            banner.className = 'banner visible warn';
+        }
+    }
+})();
+</script>
+
+</body>
+</html>

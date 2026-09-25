@@ -1,0 +1,402 @@
+[
+    {
+        "key": "accentColor",
+        "block": "colors",
+        "prop": "accentColor",
+        "type": "string",
+        "default": "rgb(0, 150, 255)",
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "queuePanelBrightness",
+        "block": "queuePanelBackground",
+        "prop": "brightness",
+        "type": "number",
+        "default": 0.5,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "queuePanelOpacity",
+        "block": "queuePanelBackground",
+        "prop": "opacity",
+        "type": "number",
+        "default": 0.6,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "dimmingOverlayColor",
+        "block": "colors",
+        "prop": "dimmingOverlayColor",
+        "type": "string",
+        "default": "rgb(20, 19, 19)",
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "albumCoverWidthPercent",
+        "block": "albumCover",
+        "prop": "widthPercent",
+        "type": "number",
+        "default": 32,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "albumCoverMaxHeightVh",
+        "block": "albumCover",
+        "prop": "maxHeightVh",
+        "type": "number",
+        "default": 80,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "albumArtBrightness",
+        "block": "albumArt",
+        "prop": "brightness",
+        "type": "string",
+        "default": "70%",
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "albumArtContrast",
+        "block": "albumArt",
+        "prop": "contrast",
+        "type": "string",
+        "default": "90%",
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "albumInfoBackOpacity",
+        "block": "albumCover",
+        "prop": "infoBackOpacity",
+        "type": "number",
+        "default": 0.8,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "showAlbumLine",
+        "block": "album",
+        "prop": "visible",
+        "type": "bool",
+        "default": true,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "showTrackLine",
+        "block": "title",
+        "prop": "visible",
+        "type": "bool",
+        "default": true,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "showArtistsLine",
+        "block": "credits",
+        "prop": "visible",
+        "type": "bool",
+        "default": true,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "clockEnabled",
+        "block": "clock",
+        "prop": "enabled",
+        "type": "bool",
+        "default": true,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "clockFontSize",
+        "block": "clock",
+        "prop": "fontSize",
+        "type": "string",
+        "default": "2.5vh",
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "clockHour12",
+        "block": "clock",
+        "prop": "hour12",
+        "type": "bool",
+        "default": false,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "artistArtSaturate",
+        "block": "artistArt",
+        "prop": "saturate",
+        "type": "string",
+        "default": "10%",
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "artistArtContrast",
+        "block": "artistArt",
+        "prop": "contrast",
+        "type": "string",
+        "default": "70%",
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "artistArtBrightness",
+        "block": "artistArt",
+        "prop": "brightness",
+        "type": "string",
+        "default": "50%",
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "bgAlbumArtSepia",
+        "block": "backgroundAlbumArt",
+        "prop": "sepia",
+        "type": "string",
+        "default": "100%",
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "bgAlbumArtSaturate",
+        "block": "backgroundAlbumArt",
+        "prop": "saturate",
+        "type": "string",
+        "default": "200%",
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "bgAlbumArtHueRotate",
+        "block": "backgroundAlbumArt",
+        "prop": "hueRotate",
+        "type": "string",
+        "default": "0.4turn",
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "bgAlbumArtContrast",
+        "block": "backgroundAlbumArt",
+        "prop": "contrast",
+        "type": "string",
+        "default": "70%",
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "bgAlbumArtBrightness",
+        "block": "backgroundAlbumArt",
+        "prop": "brightness",
+        "type": "string",
+        "default": "30%",
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "aiBoxHeightVh",
+        "block": "centralInfoPanel",
+        "prop": "heightVh",
+        "type": "number",
+        "default": 85,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "aiBodyFontSizeVh",
+        "block": "centralInfoPanel",
+        "prop": "bodyFontSizeVh",
+        "type": "number",
+        "default": 2.2,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "aiSourceFontSizeVh",
+        "block": "centralInfoPanel",
+        "prop": "sourceFontSizeVh",
+        "type": "number",
+        "default": 1.7,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformBarSizePct",
+        "block": "waveform",
+        "prop": "barSizePct",
+        "type": "number",
+        "default": 0.9,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformIntensity",
+        "block": "waveform",
+        "prop": "intensity",
+        "type": "number",
+        "default": 200,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformCornerRadiusPct",
+        "block": "waveform",
+        "prop": "cornerRadiusPct",
+        "type": "number",
+        "default": 0.5,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformBarPixelRatio",
+        "block": "waveform",
+        "prop": "barPixelRatio",
+        "type": "number",
+        "default": 2,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformTransitionSeconds",
+        "block": "waveform",
+        "prop": "transitionSeconds",
+        "type": "number",
+        "default": 1,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformTimeOffsetSeconds",
+        "block": "waveform",
+        "prop": "timeOffsetSeconds",
+        "type": "number",
+        "default": 1,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformDisplayDelaySeconds",
+        "block": "waveform",
+        "prop": "displayDelaySeconds",
+        "type": "number",
+        "default": 0,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformFgFirstStep",
+        "block": "gradient",
+        "prop": "firstStep",
+        "type": "number",
+        "default": 0.4,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformFgFirstOpacity",
+        "block": "gradient",
+        "prop": "firstOpacity",
+        "type": "number",
+        "default": 0.2,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformFgCenterOpacity",
+        "block": "gradient",
+        "prop": "centerOpacity",
+        "type": "number",
+        "default": 1,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformBgEdgeOpacity",
+        "block": "background",
+        "prop": "edgeOpacity",
+        "type": "number",
+        "default": 0.2,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformBgFirstStep",
+        "block": "background",
+        "prop": "firstStep",
+        "type": "number",
+        "default": 0.2,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformBgFirstOpacity",
+        "block": "background",
+        "prop": "firstOpacity",
+        "type": "number",
+        "default": 0.2,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "waveformBgCenterOpacity",
+        "block": "background",
+        "prop": "centerOpacity",
+        "type": "number",
+        "default": 0.2,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "colorBarEdgeOpacity",
+        "block": "colorBar",
+        "prop": "edgeOpacity",
+        "type": "number",
+        "default": 0.55,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "colorBarInnerStopPct",
+        "block": "colorBar",
+        "prop": "innerStopPct",
+        "type": "number",
+        "default": 0.25,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "colorBarInnerOpacity",
+        "block": "colorBar",
+        "prop": "innerOpacity",
+        "type": "number",
+        "default": 0.25,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "controlBarBackgroundOpacity",
+        "block": "controlBarBackground",
+        "prop": "opacity",
+        "type": "number",
+        "default": 0.5,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "barAutoHideMs",
+        "block": "remote",
+        "prop": "barAutoHideMs",
+        "type": "number",
+        "default": 5000,
+        "category": "lookAndFeel"
+    },
+    {
+        "key": "debug",
+        "block": "albumInfo",
+        "prop": "debug",
+        "type": "bool",
+        "default": false,
+        "category": "dataSources"
+    },
+    {
+        "key": "minArtistSimilarity",
+        "block": "albumInfo",
+        "prop": "minArtistSimilarity",
+        "type": "number",
+        "default": 0.25,
+        "category": "dataSources"
+    },
+    {
+        "key": "minTitleSimilarity",
+        "block": "albumInfo",
+        "prop": "minTitleSimilarity",
+        "type": "number",
+        "default": 0.3,
+        "category": "dataSources"
+    },
+    {
+        "key": "logsToTerminal",
+        "block": "debugLogging",
+        "prop": "toTerminal",
+        "type": "bool",
+        "default": false,
+        "category": "logs"
+    },
+    {
+        "key": "logsToScreen",
+        "block": "debugLogging",
+        "prop": "toScreen",
+        "type": "bool",
+        "default": false,
+        "category": "logs"
+    }
+]
