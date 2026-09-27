@@ -4,11 +4,13 @@ Custom Roon Now Playing display for Google TV/Chromecast, with AI-generated albu
 
 Not affiliated with or endorsed by Roon Labs.
 
-| Now Playing | Remote controls | AI album write-up + queue |
-| :---: | :---: | :---: |
-| ![Now Playing view](screenshots/Screenshot1.jpeg) | ![Remote control bar](screenshots/Screenshot2.jpeg) | ![AI-generated album description and queue panel](screenshots/Screenshot3.jpeg) |
-| **Album details** | **Admin utility** | **Remote navigation** |
-| ![Click on the album art to show its details](screenshots/Screenshot4.jpeg) | ![Admin panel](screenshots/Screenshot5.jpeg) | ![Use the TV remote to navigate and control the player](screenshots/Screenshot6.jpeg) |
+| Now Playing | Remote controls |
+| :---: | :---: |
+| ![Now Playing view](screenshots/Screenshot1.jpeg) | ![Remote control bar](screenshots/Screenshot2.jpeg) |
+| **AI album write-up + queue** | **Album details** |
+| ![AI-generated album description and queue panel](screenshots/Screenshot3.jpeg) | ![Click on the album art to show its details](screenshots/Screenshot4.jpeg) |
+| **Admin utility** | **Remote navigation** |
+| ![Admin panel](screenshots/Screenshot5.jpeg) | ![Use the TV remote to navigate and control the player](screenshots/Screenshot6.jpeg) |
 
 ## What this is
 
