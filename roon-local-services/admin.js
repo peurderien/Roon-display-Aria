@@ -22,7 +22,7 @@ const DISPLAY_DEFAULTS_PATH = path.join(__dirname, 'display-defaults.json');
 // display_ui.js's own version markers (see getVersions() below) -- none of
 // these three go through display-defaults.json/reset-to-default, since
 // they're not tunable settings.
-const ADMIN_VERSION = '1.2';
+const ADMIN_VERSION = '1.3';
 
 // Reads display_ui.html's and display_ui.js's version markers straight off
 // disk (never cached), same live-read philosophy as the rest of this file.
