@@ -60,7 +60,7 @@ window.onerror = function (message, source, lineno, colno, error) {
 // x.y, bumped by hand only when told to -- read by admin.js (Version tab)
 // via a plain regex on this line, not part of display-defaults.json/the
 // reset-to-default mechanism (this isn't a tunable setting).
-window.DISPLAY_UI_VERSION = '1.0';
+window.DISPLAY_UI_VERSION = '1.1';
 
 window.DisplayConfig = {
 
@@ -347,7 +347,7 @@ window.DisplayConfig = {
         holdRepeatMs: 300,      // repeat interval once continuous seek has started
         holdAccelDurationMs: 10000, // time to ramp from seekSecondsBase up to holdSeekMax
         holdSeekMax: 10,        // seconds per step once fully ramped up
-        barAutoHideMs: 5000     // control bar auto-hide timeout -- also shared by the Refresh/AI Agent/Artist dropdowns' own auto-close timers (see their armXHideTimer functions), so this one value covers every timed auto-close in the remote control area
+        barAutoHideMs: 5000     // control bar auto-hide timeout -- also shared by the Refresh/AI Agent/Artist dropdowns' own auto-close timers (see their armXHideTimer functions), the album cover's focus ring (armAlbumFocusHideTimer), and the queue row-highlight box, so this one value covers every timed auto-close in the remote control area
     },
 
     // ---- Waveform + progress bar ------------------------------------------
@@ -2096,6 +2096,7 @@ window.DisplayConfig.buildFilterString = function buildFilterString(f) {
     var albumInfoOpen = false; // true while the info overlay is showing instead of the cover art
     var albumInfoCache = {};   // "artist|album" (lowercased) -> parsed iTunes result, or null if no match/error
     var lastAlbumInfoFingerprint = null; // nowPlayingFingerprint() at last refresh, to auto-update the open panel on track change
+    var albumFocusHideTimer = null; // auto-unfocuses the cover's white ring after _remoteCfg.barAutoHideMs, same pattern/timeout as the control bar and the AI/Refresh/Artist dropdowns
 
     // #centralInfoPanel state (Album review / Composition, AI-generated).
     // infoBoxOpen/infoBoxFocused are deliberately two separate flags (see
@@ -2400,12 +2401,20 @@ window.DisplayConfig.buildFilterString = function buildFilterString(f) {
         }
     }
 
+    function armAlbumFocusHideTimer() {
+        clearTimeout(albumFocusHideTimer);
+        albumFocusHideTimer = setTimeout(unfocusAlbum, _remoteCfg.barAutoHideMs); // same auto-hide timeout as the control bar itself, per request
+    }
+
     function focusAlbum() {
         albumFocused = true;
         albumInfoOverlay.classList.add('focused'); // ring lives on the correctly-sized overlay, not #albumart's taller container
+        armAlbumFocusHideTimer();
     }
 
     function unfocusAlbum() {
+        clearTimeout(albumFocusHideTimer);
+        albumFocusHideTimer = null;
         albumFocused = false;
         albumInfoOverlay.classList.remove('focused');
     }
@@ -3712,13 +3721,16 @@ window.DisplayConfig.buildFilterString = function buildFilterString(f) {
     var queueRowElements = []; // [{ el, item }] for keyboard/remote navigation + click-to-play
     var rowFocusIndex = 0;
     var headerIconFocusIndex = 2; // which of the 3 header icons (0=loop, 1=shuffle, 2=radio) has the ring when rowFocusIndex === -1
-    var rowHighlightVisible = true; // toggled by Left/Right, and auto-hidden after ROW_HIGHLIGHT_TIMEOUT
+    var rowHighlightVisible = true; // toggled by Left/Right, and auto-hidden after _remoteCfg.barAutoHideMs
     var rowHighlightHideTimer = null;
     // Queue row-highlight ("focus bar") persistence: how long the grey
     // highlight box stays visible on the selected track before fading away
     // on its own. rowFocusIndex is remembered either way, so pressing
     // Left/Right afterward brings the highlight straight back on the same row.
-    var ROW_HIGHLIGHT_TIMEOUT = 10000;
+    // Was a separate hardcoded ROW_HIGHLIGHT_TIMEOUT (10000ms) -- now shares
+    // _remoteCfg.barAutoHideMs, the same admin-configurable auto-close value
+    // as the control bar, the album focus ring, and the AI/Refresh/Artist
+    // dropdowns, so it's a single knob for every timed auto-close.
 
     // Single point of control for the row-highlight box's visibility, so the
     // auto-hide timer stays consistent no matter what triggers a show/hide.
@@ -3728,7 +3740,7 @@ window.DisplayConfig.buildFilterString = function buildFilterString(f) {
         clearTimeout(rowHighlightHideTimer);
         rowHighlightHideTimer = visible ? setTimeout(function () {
             setRowHighlightVisible(false);
-        }, ROW_HIGHLIGHT_TIMEOUT) : null;
+        }, _remoteCfg.barAutoHideMs) : null;
     }
 
     function playQueueItem(item) {
