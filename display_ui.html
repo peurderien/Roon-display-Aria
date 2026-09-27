@@ -60,7 +60,7 @@ window.onerror = function (message, source, lineno, colno, error) {
 // x.y, bumped by hand only when told to -- read by admin.js (Version tab)
 // via a plain regex on this line, not part of display-defaults.json/the
 // reset-to-default mechanism (this isn't a tunable setting).
-window.DISPLAY_UI_VERSION = '1.1';
+window.DISPLAY_UI_VERSION = '1.2';
 
 window.DisplayConfig = {
 
@@ -2892,7 +2892,10 @@ window.DisplayConfig.buildFilterString = function buildFilterString(f) {
 
             row.appendChild(check);
             row.appendChild(label);
-            row.addEventListener('click', function () {
+            row.addEventListener('click', function (e) {
+                e.stopPropagation(); // same fix as artistDropdown's own row click -- this dropdown
+                    // lives inside #remoteBtnAiAgent too, so an unstopped click would bubble up and
+                    // re-open the dropdown right after picking (openAiAgentDropdown() re-running).
                 aiFocusIndex = i;
                 selectAiProvider();
             });
@@ -2969,7 +2972,10 @@ window.DisplayConfig.buildFilterString = function buildFilterString(f) {
             var row = document.createElement('div');
             row.className = 'aiAgentRow' + (i === refreshFocusIndex ? ' rowFocused' : '');
             row.textContent = opt.label;
-            row.addEventListener('click', function () {
+            row.addEventListener('click', function (e) {
+                e.stopPropagation(); // same fix as artistDropdown's own row click -- this dropdown
+                    // lives inside #remoteBtnRefresh too, so an unstopped click would bubble up and
+                    // re-open the dropdown right after picking (openRefreshDropdown() re-running).
                 refreshFocusIndex = i;
                 selectRefreshOption();
             });
@@ -3063,7 +3069,13 @@ window.DisplayConfig.buildFilterString = function buildFilterString(f) {
             var row = document.createElement('div');
             row.className = 'aiAgentRow' + (i === artistFocusIndex ? ' rowFocused' : ''); // reuses the AI dropdown's row styling -- same visual, no check mark needed here
             row.textContent = name;
-            row.addEventListener('click', function () {
+            row.addEventListener('click', function (e) {
+                e.stopPropagation(); // the dropdown lives INSIDE #remoteBtnArtist -- without this, the
+                    // click also bubbles up to the button's own listener, which re-runs
+                    // handleArtistButtonPress() right after selection and immediately closes the
+                    // panel this click just opened (its first check treats a second press as a
+                    // toggle-close). Never showed up via the TV remote, which selects through a
+                    // keydown Enter handler that never dispatches a click at all.
                 artistFocusIndex = i;
                 selectArtistFromDropdown();
             });
