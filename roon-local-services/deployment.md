@@ -26,7 +26,7 @@ roon-display-installer/                    <- any folder name, can live anywhere
 │   ├── display-defaults.json              <- single reference for every Look and Feel field's key/block/prop/type/default -- read by admin.js (its own field table) and served to the admin panel (Restore defaults / per-field reset buttons)
 │   ├── admin.js                           <- admin panel routes (auth, config read/write, cache management)
 │   ├── admin.html                         <- the admin panel page itself
-│   ├── guardian.js                        <- auto-restores display_ui.html/.js after a Roon update wipes them
+│   ├── guardian.js                        <- auto-restores display_ui.html/.js after a Roon update wipes them; keeps Roon's burn-in drift in cast.js switched off
 │   ├── config.json                        <- default AI settings (language, length, models, web search, style prompts)
 │   ├── package.json                       <- dependencies (express, cors, dotenv, node-fetch)
 │   └── deployment.md                      <- this file
@@ -88,7 +88,7 @@ What's actually on disk after a successful install, on both sides of the two loc
 ├── config.json                                         <- from the package on first install, then yours forever
 ├── .env                                                <- generated on first install, then yours forever
 ├── ai-cache.json                                       <- does NOT exist until the first AI response is cached
-├── backups/display_ui.html, backups/display_ui.js     <- created by guardian.js the first time it runs, see "When Roon Updates"
+├── backups/display_ui.html, display_ui.js, cast.original.js  <- created by guardian.js the first time it runs, see "When Roon Updates"
 ├── proxy.log, proxy-error.log                          <- created by launchd the first time the service runs
 └── Uninstall Roon Display.command                      <- a copy the installer stashes here too, see below
 
@@ -123,7 +123,7 @@ Nothing is destroyed without a copy existing somewhere first -- re-running `Inst
     -   `cache.js` — reads/writes/merges `ai-cache.json`; stamps a `createdAt` timestamp on every write, unconditionally, so admin's cache-clearing (Network & Maintenance tab: Clear all / Clear artist / Clear album / Clear composition, each combinable with a date filter -- any date, on, before, or a range) has something to filter by. Entries written before this feature existed simply have no `createdAt` and are only ever matched by "any date". `ai.js` still decides what's cached and under what key -- this file's only real logic of its own is that timestamp and the date/kind filtering.
     -   `display-defaults.json` — single reference for every Look and Feel, Data Sources, and Logs field that has a plain-input default: key (the flat name used in the admin API's JSON), block/prop (where it lives inside `display_ui.html`), type, category (which of the three admin tabs it belongs to), and default value. `admin.js` loads this at startup, splits it by category into its own field tables (`DISPLAY_CONFIG_FIELDS.lookAndFeel`/`dataSources`/`logs`), and also serves the `default` values to each tab's "Restore defaults" button and per-field ↺/💾 (reset / save-current-as-default) buttons — one file instead of separate, driftable copies. `sourceOrder` (Data Sources' reorderable source-priority list) is deliberately NOT in this file -- it's a widget, not a plain input, so it's read/written normally but has no default/reset here. Doesn't affect `display_ui.html`'s own embedded defaults (what a *fresh install* actually starts with) -- those remain separate literals in that file; keep both in sync by hand when adding or changing a field, or use the 💾 buttons to pull the current live value back into this file instead.
     -   `admin.js` + `admin.html` — the local admin panel (see Admin Panel below). `admin.js` registers the routes and does all the file reading/writing; `admin.html` is the page itself (plain JS, runs in Safari only, never on the TV).
-    -   `guardian.js` — watches `display_ui.html`/`.js` and auto-restores them after a Roon update; see "When Roon Updates" below for how it works. Keeps its own protected copies in `roon-local-services/backups/` (created automatically, not shipped).
+    -   `guardian.js` — watches `display_ui.html`/`.js` and auto-restores them after a Roon update, and keeps Roon's burn-in drift switched off in `cast.js`; see "When Roon Updates" below for how it works. Keeps its own protected copies in `roon-local-services/backups/` (created automatically, not shipped).
     -   `config.json` — non-secret AI settings: response language, target text length, provider order/default, model names, reasoning effort, style prompts, web search settings, key normalization rules (the admin panel's "Key normalization" table), and disambiguation (the three artist/album/composition checkboxes). Editable by hand or via the Admin Panel's "AI" tab. **Not** a place for secrets — those stay in `.env`.
     -   `package.json` — dependencies (`express`, `cors`, `dotenv`, `node-fetch`).
     -   `deployment.md` — this file. Installed/updated automatically alongside the code by the installer.
@@ -241,6 +241,16 @@ What this means in practice:
 3.  Test on the actual TV, not just Safari -- same as always. If the display still looks like stock Roon after a minute, check `roon-local-services/backups/` exists and isn't empty, and check the proxy log for `[guardian]` lines.
 
 **macOS notification persistence**: whether the notification stays on screen until dismissed or disappears after a few seconds is controlled by System Settings, not by the proxy. It appears under the app that runs `osascript` (usually "Script Editor" or "Terminal") in **System Settings → Notifications** -- set that app's style to **Alerts** if you want it to stay until you close it; **Banners** (the default) disappears on its own after a few seconds.
+
+### Roon's burn-in drift in `cast.js` (switched off by the Guardian)
+
+Since a recent Roon Server update (noticed around mid-November 2026), Roon's own `cast.js` (served next to `display_ui.html`) includes an OLED burn-in protection, `applyBurnIn`. While a zone plays it moves the whole interface (`#uiParent`) to a new point on a ~12 px orbit every minute, enlarges it by ~2.4% so no edge shows, and dims it to 0.85 after 10 minutes. On a TV this reads as the picture being slightly **zoomed with the screen edges cropped**, and the centering shifting a little over time. It only affects the Cast receiver page -- Safari, YouTube and a Chrome tab cast don't pass through it, which is why they look normal. This project already protects the panel itself (image rotation, background dimming), so the Guardian switches the drift off:
+
+- `cast.js` is Roon's file, so it is **not** backed up and restored wholesale -- that would block Roon's own fixes in it. Instead the Guardian appends a small block, marked `ROON-DISPLAY-NO-BURNIN-DRIFT`, to the end of whatever `cast.js` Roon currently ships. It re-assigns `applyBurnIn` to a function that leaves `#uiParent` with no transform and no filter. Nothing in Roon's code is edited.
+- If the marker is **missing** (first run, or a Roon update replaced the file), the Guardian saves Roon's version to `roon-local-services/backups/cast.original.js`, appends the block, and fires a macOS notification ("cast.js had Roon's burn-in drift enabled -- switched it off"). If the marker is present, nothing happens.
+- If a future Roon version no longer contains `applyBurnIn` (removed or renamed), the Guardian logs `cast.js has no applyBurnIn -- nothing to patch` and leaves the file alone. A renamed function would need the patch updated.
+- `cast.js` is loaded once when the Cast session starts, so after the patch is applied, **stop and restart the cast to the TV** to see the effect.
+- To undo it: stop the proxy, copy `backups/cast.original.js` over Roon's `cast.js`, and remove the patch block from `guardian.js` (otherwise it is re-applied within a minute).
 
 Manual fallback (Guardian down for some reason, or no backup yet exists): re-run the installer, or manually redeploy `display_ui.html`/`.js` to `/Applications/Roon.app/Contents/Resources/webroot/` from your own saved copies.
 
