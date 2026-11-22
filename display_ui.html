@@ -60,7 +60,7 @@ window.onerror = function (message, source, lineno, colno, error) {
 // x.y, bumped by hand only when told to -- read by admin.js (Version tab)
 // via a plain regex on this line, not part of display-defaults.json/the
 // reset-to-default mechanism (this isn't a tunable setting).
-window.DISPLAY_UI_VERSION = '1.3';
+window.DISPLAY_UI_VERSION = '1.4';
 
 window.DisplayConfig = {
 
@@ -265,12 +265,14 @@ window.DisplayConfig = {
     // (it zoomed the whole screen and cropped the edges). This replaces it for
     // the only parts that stay on screen for hours: the clock, elapsed time,
     // total time, and the queue panel's header text and toggle buttons. Every
-    // periodMs they glide horizontally by -amplitudePx, 0, +amplitudePx, 0, ...
-    // (never a net drift). Horizontal only, no zoom, no change to the layout.
+    // periodMs they glide along a diagonal: (-x,-y), (0,0), (+x,+y), (0,0), ...
+    // (never a net drift). No zoom, no change to the layout. Set amplitudeYPx
+    // to 0 for horizontal-only.
     pixelShift: {
         enabled: true,
         periodMs: 60000,   // one step per minute
-        amplitudePx: 3     // roughly one colon dot of the clock
+        amplitudePx: 3,    // horizontal, roughly one colon dot of the clock
+        amplitudeYPx: 3    // vertical; 0 = horizontal only
     },
 
     // ---- Queue panel behavior -----------------------------------------------
@@ -4117,14 +4119,16 @@ window.DisplayConfig.buildFilterString = function buildFilterString(f) {
     })();
 
     // OLED pixel shift (see DisplayConfig.pixelShift): nudges the always-on
-    // text horizontally, one step per period, along -a, 0, +a, 0. Inline
+    // text along a diagonal, one step per period: (-x,-y), (0,0), (+x,+y), (0,0). Inline
     // transform (no CSS var()/custom properties -- the TV's WebView lacks them).
     (function initPixelShift() {
         var cfg = window.DisplayConfig.pixelShift;
         if (!cfg || !cfg.enabled) return;
         var amp = Number(cfg.amplitudePx);
+        var ampY = cfg.amplitudeYPx == null ? 0 : Number(cfg.amplitudeYPx);
         var period = Number(cfg.periodMs);
-        if (!isFinite(amp) || amp <= 0 || !isFinite(period) || period < 1000) return;
+        if (!isFinite(ampY)) ampY = 0;
+        if (!isFinite(amp) || amp < 0 || !isFinite(period) || period < 1000 || (amp === 0 && ampY === 0)) return;
         var ids = ['clockDisplay', 'progresstime', 'totaltime', 'queuePanelRemaining', 'queuePanelIconGroup'];
         var els = [];
         ids.forEach(function (id) {
@@ -4138,9 +4142,10 @@ window.DisplayConfig.buildFilterString = function buildFilterString(f) {
         var pattern = [-1, 0, 1, 0];
         var step = 0;
         function applyShift() {
-            var dx = pattern[step % pattern.length] * amp;
+            var k = pattern[step % pattern.length];
             step++;
-            els.forEach(function (el) { el.style.transform = 'translateX(' + dx + 'px)'; });
+            var t = 'translate(' + (k * amp) + 'px, ' + (k * ampY) + 'px)';
+            els.forEach(function (el) { el.style.transform = t; });
         }
         applyShift();
         setInterval(applyShift, period);
