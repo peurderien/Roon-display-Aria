@@ -21,7 +21,7 @@ Roon's own Google TV display is functional but bare. This project replaces it wi
 - **Clock** — 24h or 12h, optional date, on-screen
 - **Animated waveform** — replaces the plain progress bar
 - **Admin panel** — a local web page (`/config`) to tune colors, layout, fonts, data sources, and AI settings, with restore-to-default and backup/export built in
-- **Self-healing** — a background guardian detects when a Roon Server update wipes out the customized display files and restores them automatically, no manual redeploy needed
+- **Self-healing** — a background guardian detects when a Roon Server update wipes out the customized display files and restores them automatically, no manual redeploy needed. It also keeps Roon's own burn-in drift (a periodic position shift plus ~2.4% zoom that crops the TV's screen edges) switched off in Roon's `cast.js`, since the display has its own burn-in measures (image rotation, background dimming)
 
 ## How it's structured
 
