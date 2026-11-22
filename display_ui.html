@@ -60,7 +60,7 @@ window.onerror = function (message, source, lineno, colno, error) {
 // x.y, bumped by hand only when told to -- read by admin.js (Version tab)
 // via a plain regex on this line, not part of display-defaults.json/the
 // reset-to-default mechanism (this isn't a tunable setting).
-window.DISPLAY_UI_VERSION = '1.2';
+window.DISPLAY_UI_VERSION = '1.3';
 
 window.DisplayConfig = {
 
@@ -258,6 +258,19 @@ window.DisplayConfig = {
         fontSize: '2.5vh',
         fontFamily: '"Roboto Mono", monospace',
         fontWeight: '200'
+    },
+
+    // ---- OLED pixel shift for the always-on text ------------------------------
+    // Roon's own burn-in drift in cast.js is switched off by guardian.js
+    // (it zoomed the whole screen and cropped the edges). This replaces it for
+    // the only parts that stay on screen for hours: the clock, elapsed time,
+    // total time, and the queue panel's header text and toggle buttons. Every
+    // periodMs they glide horizontally by -amplitudePx, 0, +amplitudePx, 0, ...
+    // (never a net drift). Horizontal only, no zoom, no change to the layout.
+    pixelShift: {
+        enabled: true,
+        periodMs: 60000,   // one step per minute
+        amplitudePx: 3     // roughly one colon dot of the clock
     },
 
     // ---- Queue panel behavior -----------------------------------------------
@@ -4101,6 +4114,36 @@ window.DisplayConfig.buildFilterString = function buildFilterString(f) {
         }
         renderClock();
         setInterval(renderClock, 1000); // cheap; keeps the minute boundary exact without extra scheduling logic
+    })();
+
+    // OLED pixel shift (see DisplayConfig.pixelShift): nudges the always-on
+    // text horizontally, one step per period, along -a, 0, +a, 0. Inline
+    // transform (no CSS var()/custom properties -- the TV's WebView lacks them).
+    (function initPixelShift() {
+        var cfg = window.DisplayConfig.pixelShift;
+        if (!cfg || !cfg.enabled) return;
+        var amp = Number(cfg.amplitudePx);
+        var period = Number(cfg.periodMs);
+        if (!isFinite(amp) || amp <= 0 || !isFinite(period) || period < 1000) return;
+        var ids = ['clockDisplay', 'progresstime', 'totaltime', 'queuePanelRemaining', 'queuePanelIconGroup'];
+        var els = [];
+        ids.forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.style.transition = 'transform 3s ease-in-out';
+            el.style.willChange = 'transform';
+            els.push(el);
+        });
+        if (!els.length) return;
+        var pattern = [-1, 0, 1, 0];
+        var step = 0;
+        function applyShift() {
+            var dx = pattern[step % pattern.length] * amp;
+            step++;
+            els.forEach(function (el) { el.style.transform = 'translateX(' + dx + 'px)'; });
+        }
+        applyShift();
+        setInterval(applyShift, period);
     })();
 
     // Queue panel open-by-default. Safe to call this early (before Roon has
